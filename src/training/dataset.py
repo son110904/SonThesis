@@ -1,18 +1,3 @@
-"""
-dataset.py – Chuẩn bị dataset huấn luyện từ job_resume_fit.csv.
-
-Chức năng:
-  - Load và clean dữ liệu
-  - Normalize ai_match_score từ [0,100] → [0,1]
-  - Truncate texts dài (resume có thể tới 38K chars)
-  - Tạo train/val split stratified theo score bucket
-  - Trả về List[InputExample] cho CosineSimilarityLoss
-
-CosineSimilarityLoss nhận:
-    InputExample(texts=[text_a, text_b], label=float ∈ [0,1])
-    và học để cosine_sim(emb_a, emb_b) → label
-"""
-
 import logging
 import math
 from pathlib import Path
@@ -35,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 # Độ dài tối đa của text (ký tự) trước khi đưa vào model
 # gte-multilingual-base max token = 8192, ~4 chars/token → 8192*3 = 24K chars an toàn
-MAX_RESUME_CHARS = 8000   # resume dài, truncate hợp lý
-MAX_JOB_CHARS    = 4000   # JD ngắn hơn, giữ gần full
+MAX_RESUME_CHARS = 3000   # truncate chặt để tránh position_ids overflow
+MAX_JOB_CHARS    = 2000   # JD ngắn hơn, giữ gần full
 
 
 def _truncate(text: str, max_chars: int) -> str:
