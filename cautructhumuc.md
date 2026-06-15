@@ -27,7 +27,7 @@ career_guidance/
         ├── frequency_analysis/     # Bước 4 
         ├── tfidf_analysis/         # Bước 5 
         ├── skill_weight/           # Bước 6 
-        ├── embedding/              # Bước 7 
+        ├── embedding/              # Bước 8
         └── knowledge_base/         # Bước 9 (chưa làm)
 
-    training/                       # Bước 8 (chưa làm)
+    training/                       # Bước 7 (chưa làm)

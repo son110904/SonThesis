@@ -1,0 +1,22 @@
+torch>=2.0.0
+torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu121
+
+# Sentence Transformers – embedding + fine-tuning
+# Yêu cầu >= 3.0 để dùng SentenceTransformerTrainer
+sentence-transformers>=3.0.0
+
+# HuggingFace ecosystem
+transformers>=4.36.0
+huggingface-hub>=0.20.0
+datasets>=2.14.0          # dùng trong trainer.py (HF Dataset format)
+
+# ── Data processing ──────────────────────────────────────────
+numpy>=1.24.0
+pandas>=1.5.0
+scipy>=1.10.0             # dùng trong evaluator.py (spearmanr)
+scikit-learn>=1.3.0       # dùng trong sentence-transformers nội bộ
+
+# ── Utilities ────────────────────────────────────────────────
+tqdm>=4.65.0              # progress bar khi encode
+safetensors>=0.4.0        # lưu/load model weights nhanh hơn
+tokenizers>=0.15.0        # HuggingFace fast tokenizer

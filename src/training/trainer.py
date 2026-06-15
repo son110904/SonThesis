@@ -30,7 +30,7 @@ import torch
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
 from sentence_transformers import SentenceTransformerTrainer, SentenceTransformerTrainingArguments
-from sentence_transformers.losses import CosineSimilarityLoss
+from sentence_transformers.sentence_transformer.losses import CosineSimilarityLoss
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -113,8 +113,25 @@ def train(
         logger.info(f"Load pretrained: {model_name}")
         model = SentenceTransformer(model_name, trust_remote_code=True)
 
+    model.max_seq_length = 512
+
+    # Workaround: trên Python 3.14 + PyTorch 2.12, buffer position_ids
+    # (persistent=False) bị corrupt ở index 0 do memory reuse khi init model.
+    # Re-register lại với giá trị đúng để tránh IndexError khi indexing rope_cos.
+    try:
+        emb = model._first_module().auto_model.embeddings
+        if hasattr(emb, "position_ids"):
+            emb.register_buffer(
+                "position_ids",
+                torch.arange(emb.position_ids.size(0)),
+                persistent=False,
+            )
+    except Exception as _e:
+        logger.warning(f"Không thể reset position_ids: {_e}")
+
     logger.info(
         f"Model loaded — dim={model.get_sentence_embedding_dimension()}, "
+        f"max_seq_length={model.max_seq_length}, "
         f"device={model.device}"
     )
 
@@ -229,7 +246,18 @@ def load_finetuned_model(
             f"Hãy chạy trainer.py trước để huấn luyện model."
         )
     logger.info(f"Load fine-tuned model từ: {model_dir}")
-    return SentenceTransformer(str(model_dir), trust_remote_code=True)
+    model = SentenceTransformer(str(model_dir), trust_remote_code=True)
+    try:
+        emb = model._first_module().auto_model.embeddings
+        if hasattr(emb, "position_ids"):
+            emb.register_buffer(
+                "position_ids",
+                torch.arange(emb.position_ids.size(0)),
+                persistent=False,
+            )
+    except Exception:
+        pass
+    return model
 
 
 # ── CLI entry point ───────────────────────────────────────────────────────────
