@@ -156,7 +156,8 @@ def train(
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=EVAL_BATCH_SIZE,
         warmup_steps=warmup_steps,
-        fp16=torch.cuda.is_available(),   # mixed precision nếu có GPU
+        fp16=False,
+        bf16=torch.cuda.is_available(),   # bf16 ổn định hơn fp16 với gte-multilingual-base   # mixed precision nếu có GPU
 
         # Evaluation & checkpointing
         eval_strategy="steps",

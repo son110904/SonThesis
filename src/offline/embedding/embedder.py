@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import torch
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -110,7 +111,25 @@ def load_model(use_finetuned: bool = True):
             logger.info(f"Load pretrained model: {model_path}")
 
     model = SentenceTransformer(model_path, trust_remote_code=True)
-    logger.info(f"Model loaded. Embedding dim: {model.get_sentence_embedding_dimension()}")
+    model.max_seq_length = 512
+
+    # Workaround: Python 3.14 + PyTorch 2.12 — buffer position_ids (persistent=False)
+    # bị corrupt do memory reuse khi init model, gây IndexError tại rope_cos[position_ids].
+    try:
+        emb = model._first_module().auto_model.embeddings
+        if hasattr(emb, "position_ids"):
+            emb.register_buffer(
+                "position_ids",
+                torch.arange(emb.position_ids.size(0)),
+                persistent=False,
+            )
+    except Exception as _e:
+        logger.warning(f"Không thể reset position_ids: {_e}")
+
+    logger.info(
+        f"Model loaded. Embedding dim: {model.get_sentence_embedding_dimension()}, "
+        f"max_seq_length={model.max_seq_length}"
+    )
     return model
 
 
@@ -145,9 +164,27 @@ def embed_occupation_profiles(
 
     logger.debug(f"Sample text:\n{texts[0][:300]}")
 
+    # Truncate texts thủ công qua tokenizer trước khi encode
+    # Tránh position_ids overflow trong gte-multilingual-base
+    MAX_TOKENS = 512
+    tokenizer = model.tokenizer
+    truncated_texts = []
+    for text in texts:
+        tokens = tokenizer(
+            text,
+            max_length=MAX_TOKENS,
+            truncation=True,
+            return_tensors=None,
+        )
+        truncated = tokenizer.decode(
+            tokens["input_ids"],
+            skip_special_tokens=True,
+        )
+        truncated_texts.append(truncated)
+
     # Encode
     embeddings = model.encode(
-        texts,
+        truncated_texts,
         batch_size=batch_size,
         show_progress_bar=True,
         normalize_embeddings=normalize,

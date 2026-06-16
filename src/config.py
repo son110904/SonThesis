@@ -19,11 +19,11 @@ EMBEDDING_MODEL_NAME: str = "Alibaba-NLP/gte-multilingual-base"
 FINE_TUNED_MODEL_DIR: Path = MODELS_DIR / "gte_multilingual_resume_match"
 
 # ── Tham số huấn luyện ──────────────────────────────────────────────────────
-TRAIN_EPOCHS: int = 3
-TRAIN_BATCH_SIZE: int = 16
-EVAL_BATCH_SIZE: int = 32
-TRAIN_WARMUP_STEPS: int = 100
-TRAIN_EVAL_STEPS: int = 100
+TRAIN_EPOCHS: int = 2              # giảm từ 3
+TRAIN_BATCH_SIZE: int = 32         # tăng từ 16 → xử lý nhanh hơn
+EVAL_BATCH_SIZE: int = 64          # tăng từ 32
+TRAIN_WARMUP_STEPS: int = 50       # giảm từ 100
+TRAIN_EVAL_STEPS: int = 150        # tăng từ 100 → đánh giá ít hơn
 
 # ── Tham số Skill Weight ────────────────────────────────────────────────────
 ALPHA: float = 0.6          # trọng số frequency
