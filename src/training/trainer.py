@@ -156,8 +156,11 @@ def train(
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=EVAL_BATCH_SIZE,
         warmup_steps=warmup_steps,
+        # Mixed precision (fp16 VÀ bf16) gây gradient NaN ngay từ bước backward đầu
+        # tiên với gte-multilingual rope model trên build PyTorch hiện tại (forward
+        # fp32 vẫn bình thường). Train fp32 để ổn định. Dataset nhỏ nên không chậm.
         fp16=False,
-        bf16=torch.cuda.is_available(),   # bf16 ổn định hơn fp16 với gte-multilingual-base   # mixed precision nếu có GPU
+        bf16=False,
 
         # Evaluation & checkpointing
         eval_strategy="steps",
@@ -194,6 +197,17 @@ def train(
     trainer.train()
     elapsed = datetime.now() - start_time
     logger.info(f"Training hoàn tất trong {elapsed}")
+
+    # ── 6b. Guard: KHÔNG lưu nếu model bị NaN (training diverged) ──────────────
+    nan_params = [
+        n for n, p in trainer.model.named_parameters() if torch.isnan(p).any()
+    ]
+    if nan_params:
+        raise RuntimeError(
+            f"Training diverged: {len(nan_params)} tensor chứa NaN "
+            f"(vd: {nan_params[:3]}). Model KHÔNG được lưu để tránh ghi đè model hỏng. "
+            f"Kiểm tra mixed precision (phải fp32) / learning rate."
+        )
 
     # ── 7. Lưu best model bằng save_pretrained ────────────────────────────────
     # Dùng save_pretrained() thay vì output_path của fit() cũ

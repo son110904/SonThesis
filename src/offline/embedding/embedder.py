@@ -84,6 +84,29 @@ def build_occupation_text(profile: dict) -> str:
     return " ".join(parts)
 
 
+def _reset_position_ids(model) -> None:
+    """
+    Workaround: Python 3.14 + PyTorch 2.12 — buffer position_ids (persistent=False)
+    bị corrupt do memory reuse khi init model, gây IndexError tại rope_cos[position_ids].
+    Re-register lại với giá trị đúng (torch.arange).
+    """
+    try:
+        emb = model._first_module().auto_model.embeddings
+        if hasattr(emb, "position_ids"):
+            emb.register_buffer(
+                "position_ids",
+                torch.arange(emb.position_ids.size(0)),
+                persistent=False,
+            )
+    except Exception as _e:
+        logger.warning(f"Không thể reset position_ids: {_e}")
+
+
+def _has_nan_weights(model) -> bool:
+    """Kiểm tra model có tensor NaN không (vd fine-tuned model từ training bị diverge)."""
+    return any(torch.isnan(p).any().item() for p in model.parameters())
+
+
 def load_model(use_finetuned: bool = True):
     """
     Load SentenceTransformer model.
@@ -112,19 +135,24 @@ def load_model(use_finetuned: bool = True):
 
     model = SentenceTransformer(model_path, trust_remote_code=True)
     model.max_seq_length = 512
+    _reset_position_ids(model)
 
-    # Workaround: Python 3.14 + PyTorch 2.12 — buffer position_ids (persistent=False)
-    # bị corrupt do memory reuse khi init model, gây IndexError tại rope_cos[position_ids].
-    try:
-        emb = model._first_module().auto_model.embeddings
-        if hasattr(emb, "position_ids"):
-            emb.register_buffer(
-                "position_ids",
-                torch.arange(emb.position_ids.size(0)),
-                persistent=False,
+    # Phát hiện fine-tuned model bị hỏng (NaN weights do training diverge với mixed
+    # precision). Nếu hỏng → fallback sang pretrained để embedding không ra NaN.
+    if _has_nan_weights(model):
+        if model_path != EMBEDDING_MODEL_NAME:
+            logger.error(
+                f"Model tại {model_path} chứa NaN weights (training diverged). "
+                f"Fallback sang pretrained: {EMBEDDING_MODEL_NAME}. "
+                f"Hãy fine-tune lại (fp32) để dùng được fine-tuned model."
             )
-    except Exception as _e:
-        logger.warning(f"Không thể reset position_ids: {_e}")
+            model = SentenceTransformer(EMBEDDING_MODEL_NAME, trust_remote_code=True)
+            model.max_seq_length = 512
+            _reset_position_ids(model)
+        else:
+            raise RuntimeError(
+                "Pretrained model chứa NaN weights — không thể dùng để embed."
+            )
 
     logger.info(
         f"Model loaded. Embedding dim: {model.get_sentence_embedding_dimension()}, "
