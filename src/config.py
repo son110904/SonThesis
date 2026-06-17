@@ -7,6 +7,15 @@ from pathlib import Path
 
 # ── Đường dẫn gốc ──────────────────────────────────────────────────────────
 ROOT_DIR: Path = Path(__file__).resolve().parent.parent
+
+# Tự nạp biến môi trường từ .env (OPENAI_API_KEY, …) nếu file tồn tại.
+# Không ghi đè biến đã set sẵn trong shell (override=False).
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT_DIR / ".env", override=False)
+except ImportError:
+    pass
 DATA_DIR: Path = ROOT_DIR / "data"
 MODELS_DIR: Path = ROOT_DIR / "models"
 OCCUPATION_PROFILES_DIR: Path = DATA_DIR / "occupation_profiles"

@@ -33,6 +33,7 @@ python-docx>=1.1.0        # đọc DOCX
 
 # ── Online Pipeline: AI Recommendation ───────────────────────
 openai>=1.0.0             # GPT-4o Mini (đọc OPENAI_API_KEY từ env)
+python-dotenv>=1.0.0      # tự nạp .env (OPENAI_API_KEY)
 
 # ── Online Pipeline: Frontend Streamlit ──────────────────────
 streamlit>=1.30.0         # giao diện web

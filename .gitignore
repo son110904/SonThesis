@@ -1,2 +1,10 @@
 __pycache__/
 *.pyc
+
+# Secrets — KHÔNG commit
+.env
+.streamlit/secrets.toml
+
+# Local artifacts
+data/app.db
+*.log
