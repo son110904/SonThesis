@@ -2,6 +2,7 @@
 config.py – Quản lý tập trung toàn bộ tham số hệ thống.
 """
 
+import os
 from pathlib import Path
 
 # ── Đường dẫn gốc ──────────────────────────────────────────────────────────
@@ -39,3 +40,29 @@ JD_TITLE_COL: str = "job_title"
 RESUME_TEXT_COL: str = "resume_text"
 JOB_TEXT_COL: str = "job_text"
 MATCH_SCORE_COL: str = "ai_match_score"
+
+# ══════════════════════════════════════════════════════════════════════════
+# ONLINE PIPELINE
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Final Score: match_score = MATCH_ALPHA*semantic + MATCH_BETA*weighted ──
+# (khác ALPHA/BETA ở trên — kia là trọng số frequency vs tf-idf của skill weight)
+MATCH_ALPHA: float = 0.5    # trọng số semantic similarity
+MATCH_BETA: float = 0.5     # trọng số weighted skill score
+
+# ── LLM (AI Recommendation + trích experience/projects/education) ───────────
+# Key đọc từ biến môi trường OPENAI_API_KEY. Thiếu key → degrade graceful.
+OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+LLM_TIMEOUT_SECONDS: float = 60.0
+LLM_MAX_RETRIES: int = 2
+
+# ── Text extraction giới hạn ────────────────────────────────────────────────
+MAX_CV_CHARS: int = 20000   # cắt CV quá dài trước khi xử lý
+
+# ── Database (SQLite) ───────────────────────────────────────────────────────
+DB_PATH: Path = ROOT_DIR / "data" / "app.db"
+
+# ── API ─────────────────────────────────────────────────────────────────────
+API_HOST: str = os.getenv("API_HOST", "127.0.0.1")
+API_PORT: int = int(os.getenv("API_PORT", "8000"))
