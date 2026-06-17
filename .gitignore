@@ -8,3 +8,6 @@ __pycache__/
 # Local artifacts
 data/app.db
 *.log
+
+# Model weights — quá lớn (GB), không đưa vào git (GitHub chặn >100MB)
+models/
