@@ -40,9 +40,9 @@ def render_match_gauge(match_score_0_1: float, height: int = 260) -> None:
                 "bgcolor": "rgba(0,0,0,0)",
                 "borderwidth": 0,
                 "steps": [
-                    {"range": [0, 40], "color": "#fde8e8"},
-                    {"range": [40, 70], "color": "#fdf0d5"},
-                    {"range": [70, 100], "color": "#e5f6ee"},
+                    {"range": [0, 40], "color": "#f6ddd5"},
+                    {"range": [40, 70], "color": "#f6e7cf"},
+                    {"range": [70, 100], "color": "#e3efe1"},
                 ],
                 "threshold": {
                     "line": {"color": color, "width": 3},
