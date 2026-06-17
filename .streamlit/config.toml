@@ -1,0 +1,14 @@
+# Cấu hình Streamlit — khóa theme sáng (Page Theme Lock của taste-skill) và
+# ẩn sidebar nav tự sinh để điều hướng hoàn toàn qua session_state.
+
+[client]
+showSidebarNavigation = false
+toolbarMode = "minimal"
+
+[theme]
+base = "light"
+primaryColor = "#2563eb"
+backgroundColor = "#f6f8fb"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0f172a"
+font = "sans serif"
