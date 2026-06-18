@@ -62,7 +62,7 @@ def render_home() -> None:
             )
         with col2:
             occ_display = st.selectbox(
-                "Vị trí / nhóm nghề mong muốn",
+                "Lĩnh vực nghề nghiệp của bạn",
                 options=list(display_to_key.keys()),
                 index=0,
             )

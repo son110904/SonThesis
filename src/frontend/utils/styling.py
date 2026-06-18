@@ -2,9 +2,9 @@
 styling.py – Giao diện ấm, có chủ đích (rose beige + mascot shiba + motion).
 
 Design Read: tool đánh giá nghề nghiệp mang cá tính thân thiện/ấm áp — nền
-rose-beige, một accent terracotta (ăn với màu lông shiba), font bo tròn (Fredoka
-+ Nunito) thay font "AI" mặc định, chuyển động nhẹ ở section/card + một chú shiba
-chạy ngang background.
+rose-beige, một accent terracotta (ăn với màu lông shiba), font serif Crimson Pro
+(có subset tiếng Việt → hiển thị dấu chuẩn) thay font "AI" mặc định, chuyển động
+nhẹ ở section/card + một chú shiba chạy ngang background.
 
 Nguyên tắc taste-skill vẫn giữ:
   - 1 accent duy nhất cho chrome; xanh/đỏ chỉ cho semantic (badge, score).
@@ -80,7 +80,7 @@ _SHIBA_B64 = base64.b64encode(_SHIBA_SVG.strip().encode("utf-8")).decode("ascii"
 
 _CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
 
 :root {{
   --bg: {COLORS['bg']};
@@ -101,7 +101,7 @@ _CSS = f"""
 
 #MainMenu, footer, [data-testid="stDecoration"], [data-testid="stSidebarNav"] {{ display: none !important; }}
 
-html, body, .stApp, [class*="css"] {{ font-family: 'Nunito', system-ui, sans-serif; }}
+html, body, .stApp, [class*="css"] {{ font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif; }}
 
 /* Nền rose beige ấm, gradient mềm */
 .stApp {{
@@ -115,8 +115,8 @@ html, body, .stApp, [class*="css"] {{ font-family: 'Nunito', system-ui, sans-ser
 
 .block-container {{ max-width: 940px; padding-top: 2.2rem; padding-bottom: 6rem; position: relative; z-index: 2; }}
 
-/* Typography: heading bo tròn Fredoka */
-h1, h2, h3, .app-header .title {{ font-family: 'Fredoka', sans-serif; color: var(--text); letter-spacing: -0.01em; }}
+/* Typography: heading serif Crimson Pro */
+h1, h2, h3, .app-header .title {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); letter-spacing: -0.01em; }}
 h1 {{ font-size: 2.1rem; }}
 p, label, .stMarkdown {{ color: var(--text); }}
 
@@ -129,7 +129,7 @@ p, label, .stMarkdown {{ color: var(--text); }}
 /* Nút accent terracotta, bo tròn, có phản hồi nhấn */
 .stButton > button, .stFormSubmitButton > button {{
   background: var(--accent); color: #fff; border: 0; border-radius: var(--radius-btn);
-  font-family: 'Fredoka', sans-serif; font-weight: 600; padding: 0.6rem 1.3rem;
+  font-family: 'Crimson Pro', Georgia, serif; font-weight: 600; padding: 0.6rem 1.3rem;
   box-shadow: 0 6px 16px -8px rgba(162,68,31,.7);
   transition: transform .08s ease, background .15s ease, box-shadow .15s ease;
 }}
@@ -152,7 +152,7 @@ div[data-baseweb="select"] > div {{ border-radius: var(--radius-btn); background
 }}
 .metric-card:hover {{ transform: translateY(-3px); box-shadow: 0 18px 38px -22px rgba(90,61,43,.55); }}
 .metric-card .label {{ color: var(--muted); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }}
-.metric-card .value {{ font-family: 'Fredoka', sans-serif; font-size: 2.1rem; font-weight: 700; margin-top: 0.15rem; }}
+.metric-card .value {{ font-family: 'Crimson Pro', Georgia, serif; font-size: 2.1rem; font-weight: 700; margin-top: 0.15rem; }}
 .metric-card .bar {{ height: 7px; border-radius: 999px; background: #ecdcd3; margin-top: 0.7rem; overflow: hidden; }}
 .metric-card .bar > span {{ display: block; height: 100%; border-radius: 999px; animation: growBar .8s cubic-bezier(.16,1,.3,1) both; }}
 
@@ -176,7 +176,7 @@ div[data-baseweb="select"] > div {{ border-radius: var(--radius-btn); background
 .rec-card h3:first-child {{ margin-top: 0; }}
 
 /* Heading section (thân thiện, không phải eyebrow micro-label kiểu AI) */
-.section-label {{ font-family: 'Fredoka', sans-serif; color: var(--text); font-size: 1.05rem;
+.section-label {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); font-size: 1.05rem;
   font-weight: 600; margin: 1.7rem 0 0.6rem; }}
 .hint {{ color: var(--muted); font-size: 0.92rem; }}
 
