@@ -14,7 +14,7 @@ from src.config import (
     JOB_TEXT_COL,
     MATCH_SCORE_COL,
 )
-from src.offline.preprocessing.text_cleaner import clean_text
+from src.offline.preprocessing_step1.text_cleaner import clean_text
 
 logger = logging.getLogger(__name__)
 

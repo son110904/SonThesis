@@ -21,14 +21,14 @@ import logging
 from typing import Optional
 
 from src.models import AnalysisResult
-from src.online.extraction import extract_text_from_bytes
-from src.online.candidate_profile import build_candidate_profile
-from src.online.embedding import embed_candidate
-from src.online.semantic_matching import compute_semantic_score
-from src.online.weighted_matching import compute_weighted_skill_score
-from src.online.scoring import compute_final_score
-from src.online.skill_gap import analyze_skill_gap
-from src.online.recommendation import generate_recommendation
+from src.online.extraction_step2 import extract_text_from_bytes
+from src.online.candidate_profile_step4 import build_candidate_profile
+from src.online.embedding_step5 import embed_candidate
+from src.online.semantic_matching_step7 import compute_semantic_score
+from src.online.weighted_matching_step8 import compute_weighted_skill_score
+from src.online.scoring_step9 import compute_final_score
+from src.online.skill_gap_step10 import analyze_skill_gap
+from src.online.recommendation_step11 import generate_recommendation
 from src.online.services.occupation_loader import get_occupation
 
 logger = logging.getLogger(__name__)

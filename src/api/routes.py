@@ -14,11 +14,11 @@ import logging
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from src.online.extraction.text_extractor import UnsupportedFileType
+from src.online.extraction_step2.text_extractor import UnsupportedFileType
 from src.online.services import analyze_cv, list_occupations
 from src.online.services.analysis_service import EmptyCVError
 from src.online.services.occupation_loader import OccupationNotFound
-from src.online.recommendation.llm_client import get_llm_client
+from src.online.recommendation_step11.llm_client import get_llm_client
 from src.database import list_evaluations, get_evaluation
 from src.api.schemas import (
     AnalyzeResponse,
