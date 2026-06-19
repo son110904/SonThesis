@@ -121,8 +121,11 @@ def log_score_distribution(examples: list[InputExample], name: str = "dataset") 
     total = len(labels)
     print(f"\n  {name} distribution (n={total}):")
     ranges = ["[0.0,0.2)", "[0.2,0.4)", "[0.4,0.6)", "[0.6,0.8)", "[0.8,1.0]"]
+    # stdout Windows (cp1252) khi redirect ra file không encode được "█" → dùng "#"
+    # nếu encoding không phải UTF-8 để tránh UnicodeEncodeError làm chết training.
+    bar_char = "█" if (sys.stdout.encoding or "").lower().startswith("utf") else "#"
     for rng, cnt in zip(ranges, buckets):
-        bar = "█" * int(cnt / total * 40)
+        bar = bar_char * int(cnt / total * 40)
         print(f"    {rng}  {cnt:>4} ({cnt/total*100:>5.1f}%)  {bar}")
     print(f"  mean={sum(labels)/total:.3f}")
 

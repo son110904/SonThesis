@@ -1,232 +1,321 @@
 """
-styling.py – Giao diện ấm, có chủ đích (rose beige + mascot shiba + motion).
-
-Design Read: tool đánh giá nghề nghiệp mang cá tính thân thiện/ấm áp — nền
-rose-beige, một accent terracotta (ăn với màu lông shiba), font serif Crimson Pro
-(có subset tiếng Việt → hiển thị dấu chuẩn) thay font "AI" mặc định, chuyển động
-nhẹ ở section/card + một chú shiba chạy ngang background.
-
-Nguyên tắc taste-skill vẫn giữ:
-  - 1 accent duy nhất cho chrome; xanh/đỏ chỉ cho semantic (badge, score).
-  - Palette warm harmonised (rose beige + terracotta + warm neutrals), không trộn
-    warm/cool. Đây là brand choice của user nên override "anti-beige" mặc định.
-  - Shape lock: card 16px, button 12px, badge pill.
-  - Contrast AA cho text/badge.
-  - Motion có chủ đích: entrance fade-up + hover lift; shiba là điểm nhấn vui.
+styling.py – ShibaCV design system.
 """
 
 from __future__ import annotations
 
 import base64
+from pathlib import Path
 
-# Token màu — export để plotly gauge & components dùng đồng bộ
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
 COLORS: dict[str, str] = {
-    "bg": "#f3ddd4",        # rose beige
-    "bg2": "#ecd0c5",       # rose beige đậm hơn (gradient)
-    "surface": "#fff8f3",   # warm white
-    "text": "#3c2b25",      # warm dark brown
-    "muted": "#8c7064",     # warm taupe
-    "border": "#e6cdc1",
-    "accent": "#c2562f",    # terracotta
-    "accent_hover": "#a5441f",
-    # Semantic (warm-toned để hợp palette)
-    "good": "#2f7d50",
-    "good_bg": "#e7f1e8",
-    "warn": "#c07d18",
-    "bad": "#b23a2a",
-    "bad_bg": "#f7e3df",
+    "bg": "#F8F2E9",
+    "surface": "#FFFFFF",
+    "surface_warm": "#F7F0E6",
+    "text": "#1A1007",
+    "muted": "#7A6658",
+    "border": "#E5D8CC",
+    "accent": "#7A3820",
+    "accent_mid": "#D4741A",
+    "accent_hover": "#622E18",
+    "accent_light": "#F5E8DF",
+    "good": "#2A7A50",
+    "good_bg": "#E8F4ED",
+    "good_border": "#B8D9C5",
+    "warn": "#9A6020",
+    "warn_bg": "#FDF3E0",
+    "warn_border": "#E8CF9A",
+    "bad": "#A03020",
+    "bad_bg": "#FCEAE6",
 }
 
-# ── SVG shiba (nhìn nghiêng, hướng phải) — chân trước/sau animate để như đang chạy ──
-_SHIBA_SVG = """
-<svg class="shiba-svg" viewBox="0 0 120 88" xmlns="http://www.w3.org/2000/svg">
-  <!-- đuôi cuộn -->
-  <path d="M16 44 C2 40 4 22 18 26 C10 30 12 40 22 42 Z" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5" stroke-linejoin="round"/>
-  <!-- chân sau -->
-  <g class="leg leg-back">
-    <rect x="30" y="54" width="9" height="22" rx="4" fill="#d98a3f" stroke="#5a3d2b" stroke-width="2.5"/>
-  </g>
-  <g class="leg leg-back2">
-    <rect x="44" y="54" width="9" height="22" rx="4" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5"/>
-  </g>
-  <!-- chân trước -->
-  <g class="leg leg-front2">
-    <rect x="74" y="54" width="9" height="22" rx="4" fill="#d98a3f" stroke="#5a3d2b" stroke-width="2.5"/>
-  </g>
-  <g class="leg leg-front">
-    <rect x="86" y="54" width="9" height="22" rx="4" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5"/>
-  </g>
-  <!-- thân -->
-  <ellipse cx="56" cy="46" rx="38" ry="20" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5"/>
-  <path d="M30 52 Q56 64 84 52 Q56 60 30 52 Z" fill="#f6e7d4"/>
-  <!-- đầu -->
-  <circle cx="92" cy="36" r="20" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5"/>
-  <!-- tai -->
-  <path d="M80 20 L86 6 L94 22 Z" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M100 22 L106 6 L112 22 Z" fill="#e8a45c" stroke="#5a3d2b" stroke-width="2.5" stroke-linejoin="round"/>
-  <!-- mặt cream -->
-  <path d="M92 30 Q104 34 104 44 Q98 52 92 52 Q88 44 88 38 Z" fill="#f6e7d4"/>
-  <!-- mõm + mũi -->
-  <circle cx="110" cy="42" r="4.5" fill="#5a3d2b"/>
-  <!-- mắt -->
-  <circle cx="96" cy="34" r="3" fill="#3a2620"/>
-  <!-- má -->
-  <ellipse cx="90" cy="44" rx="4" ry="3" fill="#e58b6b" opacity="0.55"/>
-</svg>
-"""
 
-# Nhúng dạng base64 background-image để KHÔNG bị sanitizer của st.markdown lọc mất.
-_SHIBA_B64 = base64.b64encode(_SHIBA_SVG.strip().encode("utf-8")).decode("ascii")
+def img_tag(filename: str, style: str = "width:100%;height:auto;display:block") -> str:
+    """Trả về <img> base64 để nhúng trực tiếp vào st.markdown."""
+    path = ASSETS_DIR / filename
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    ext = path.suffix.lstrip(".")
+    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    return f'<img src="data:{mime};base64,{b64}" style="{style}">'
+
 
 _CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {{
   --bg: {COLORS['bg']};
-  --bg2: {COLORS['bg2']};
   --surface: {COLORS['surface']};
+  --surface-warm: {COLORS['surface_warm']};
   --text: {COLORS['text']};
   --muted: {COLORS['muted']};
   --border: {COLORS['border']};
   --accent: {COLORS['accent']};
+  --accent-mid: {COLORS['accent_mid']};
   --accent-hover: {COLORS['accent_hover']};
+  --accent-light: {COLORS['accent_light']};
   --good: {COLORS['good']};
   --good-bg: {COLORS['good_bg']};
+  --good-border: {COLORS['good_border']};
+  --warn: {COLORS['warn']};
+  --warn-bg: {COLORS['warn_bg']};
+  --warn-border: {COLORS['warn_border']};
   --bad: {COLORS['bad']};
   --bad-bg: {COLORS['bad_bg']};
-  --radius-card: 16px;
-  --radius-btn: 12px;
+  --radius-card: 18px;
+  --shadow-card: 0 4px 24px rgba(80,45,20,0.08);
+  --shadow-hover: 0 8px 32px rgba(80,45,20,0.14);
 }}
 
-#MainMenu, footer, [data-testid="stDecoration"], [data-testid="stSidebarNav"] {{ display: none !important; }}
+/* ─── Hide Streamlit chrome ─────────────────────────── */
+#MainMenu, footer, [data-testid="stDecoration"],
+[data-testid="stToolbar"], header, [data-testid="stSidebarNav"]
+{{ display: none !important; }}
 
-html, body, .stApp, [class*="css"] {{ font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif; }}
+/* ─── Base ──────────────────────────────────────────── */
+html, body {{ font-family: 'Inter', system-ui, sans-serif; background: var(--bg); }}
+.stApp {{ background: var(--bg) !important; color: var(--text); }}
+.block-container {{ padding-top: 1.8rem !important; padding-bottom: 5rem; max-width: 1200px; }}
+h1, h2, h3 {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); letter-spacing: -0.01em; }}
+p, .stMarkdown p {{ color: var(--text); }}
 
-/* Nền rose beige ấm, gradient mềm */
-.stApp {{
-  color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 85% -5%, #f7e6dd 0%, transparent 55%),
-    radial-gradient(900px 500px at 0% 110%, #f0d3c7 0%, transparent 50%),
-    linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
-  background-attachment: fixed;
-}}
-
-.block-container {{ max-width: 940px; padding-top: 2.2rem; padding-bottom: 6rem; position: relative; z-index: 2; }}
-
-/* Typography: heading serif Crimson Pro */
-h1, h2, h3, .app-header .title {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); letter-spacing: -0.01em; }}
-h1 {{ font-size: 2.1rem; }}
-p, label, .stMarkdown {{ color: var(--text); }}
-
-/* Header */
-.app-header {{ margin-bottom: 0.3rem; animation: fadeUp .5s ease both; }}
-.app-header .title {{ font-size: 2.1rem; font-weight: 700; }}
-.app-header .subtitle {{ color: var(--muted); font-size: 1.02rem; margin-top: 0.2rem; max-width: 60ch; }}
-.app-divider {{ height: 1px; background: var(--border); border: 0; margin: 1.3rem 0 1.7rem; }}
-
-/* Nút accent terracotta, bo tròn, có phản hồi nhấn */
+/* ─── Buttons ───────────────────────────────────────── */
 .stButton > button, .stFormSubmitButton > button {{
-  background: var(--accent); color: #fff; border: 0; border-radius: var(--radius-btn);
-  font-family: 'Crimson Pro', Georgia, serif; font-weight: 600; padding: 0.6rem 1.3rem;
-  box-shadow: 0 6px 16px -8px rgba(162,68,31,.7);
-  transition: transform .08s ease, background .15s ease, box-shadow .15s ease;
+  background: var(--accent) !important; color: #fff !important;
+  border: none !important; border-radius: 999px !important;
+  font-family: 'Inter', sans-serif !important; font-size: 0.97rem !important;
+  font-weight: 600 !important; padding: 0.68rem 1.9rem !important;
+  box-shadow: 0 4px 16px rgba(122,56,32,0.3) !important;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease !important;
 }}
 .stButton > button:hover, .stFormSubmitButton > button:hover {{
-  background: var(--accent-hover); color:#fff; transform: translateY(-1px);
-  box-shadow: 0 10px 22px -8px rgba(162,68,31,.75);
+  background: var(--accent-hover) !important; color: #fff !important;
+  transform: translateY(-2px) !important; box-shadow: 0 8px 22px rgba(122,56,32,0.38) !important;
 }}
-.stButton > button:active, .stFormSubmitButton > button:active {{ transform: translateY(1px); }}
+.stButton > button:active {{ transform: translateY(0) !important; }}
 
-[data-testid="stFileUploaderDropzone"] {{ border-radius: var(--radius-card); border: 1.5px dashed var(--border); background: rgba(255,255,255,.45); }}
-div[data-baseweb="select"] > div {{ border-radius: var(--radius-btn); background: var(--surface); }}
-
-/* Thẻ — kính mờ ấm, hover nhấc nhẹ */
-.metric-card {{
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
-  padding: 1.1rem 1.2rem; height: 100%;
-  box-shadow: 0 10px 30px -22px rgba(90,61,43,.5);
-  animation: fadeUp .55s ease both;
-  transition: transform .18s ease, box-shadow .18s ease;
+/* ─── File uploader ─────────────────────────────────── */
+[data-testid="stFileUploaderDropzone"] {{
+  border: 2px dashed var(--border) !important; border-radius: 14px !important;
+  background: #FAFAF8 !important; min-height: 130px;
 }}
-.metric-card:hover {{ transform: translateY(-3px); box-shadow: 0 18px 38px -22px rgba(90,61,43,.55); }}
-.metric-card .label {{ color: var(--muted); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }}
-.metric-card .value {{ font-family: 'Crimson Pro', Georgia, serif; font-size: 2.1rem; font-weight: 700; margin-top: 0.15rem; }}
-.metric-card .bar {{ height: 7px; border-radius: 999px; background: #ecdcd3; margin-top: 0.7rem; overflow: hidden; }}
-.metric-card .bar > span {{ display: block; height: 100%; border-radius: 999px; animation: growBar .8s cubic-bezier(.16,1,.3,1) both; }}
 
-/* Badge pill */
-.badge-wrap {{ display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.2rem; }}
-.badge {{ display: inline-flex; align-items: center; font-size: 0.86rem; font-weight: 700;
-  padding: 0.32rem 0.75rem; border-radius: 999px; border: 1px solid transparent;
-  animation: pop .4s ease both; transition: transform .12s ease; }}
-.badge:hover {{ transform: translateY(-2px) scale(1.03); }}
-.badge-matched {{ background: var(--good-bg); color: var(--good); border-color: #b9ddc1; }}
-.badge-missing {{ background: var(--bad-bg);  color: var(--bad);  border-color: #efc4bc; }}
-.badge-muted   {{ background: #f3e6de; color: var(--muted); border-color: var(--border); }}
-
-/* Thẻ AI Recommendation */
-.rec-card {{
-  background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--accent);
-  border-radius: var(--radius-card); padding: 1.3rem 1.5rem; margin-top: 0.4rem;
-  box-shadow: 0 12px 32px -22px rgba(90,61,43,.5); animation: fadeUp .6s ease both;
+/* ─── Input / Select ────────────────────────────────── */
+[data-testid="stTextInput"] input, .stTextInput input {{
+  border: 1.5px solid var(--border) !important; border-radius: 12px !important;
+  background: var(--surface) !important; color: var(--text) !important;
 }}
-.rec-card h3 {{ margin-top: 1.1rem; font-size: 1.08rem; font-weight: 600; }}
-.rec-card h3:first-child {{ margin-top: 0; }}
+[data-testid="stTextInput"] input:focus {{
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(122,56,32,0.1) !important;
+}}
+div[data-baseweb="select"] > div {{
+  border: 1.5px solid var(--border) !important; border-radius: 12px !important;
+  background: var(--surface) !important;
+}}
 
-/* Heading section (thân thiện, không phải eyebrow micro-label kiểu AI) */
-.section-label {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); font-size: 1.05rem;
-  font-weight: 600; margin: 1.7rem 0 0.6rem; }}
-.hint {{ color: var(--muted); font-size: 0.92rem; }}
+/* ─── Landing hero ──────────────────────────────────── */
+.hero-eyebrow {{
+  width: 38px; height: 5px; background: var(--accent);
+  border-radius: 3px; margin-bottom: 1.1rem;
+}}
+.hero-title {{
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 2.9rem; font-weight: 700; line-height: 1.15; color: var(--text); margin: 0;
+}}
+.hero-title .accent {{ color: var(--accent); }}
+.hero-subtitle {{
+  font-size: 1rem; color: var(--muted); line-height: 1.65;
+  margin: 0.9rem 0 2rem; max-width: 46ch;
+}}
+.hero-img-card {{
+  background: #F2EAE0; border-radius: 22px; overflow: hidden;
+  padding: 1.2rem; display: flex; align-items: center; justify-content: center;
+}}
+.hero-img-card img {{ border-radius: 14px; width: 100%; height: auto; display: block; }}
 
-/* Banner info ấm */
+/* ─── Upload page ───────────────────────────────────── */
+.page-h1 {{
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 2rem; font-weight: 700; color: var(--text); margin: 0 0 0.25rem;
+}}
+.page-h1-sub {{ font-size: 0.95rem; color: var(--muted); margin: 0 0 1.6rem; }}
+.quick-tags {{ display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.5rem 0 0.2rem; }}
+.qtag {{
+  background: #F0EBE3; color: var(--muted);
+  border: 1.5px solid var(--border); border-radius: 999px;
+  padding: 0.3rem 0.85rem; font-size: 0.82rem; font-weight: 500;
+}}
+.shiba-ready-card {{
+  background: var(--surface-warm); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 1.2rem 1.4rem; margin-top: 0.8rem; text-align: center;
+}}
+.shiba-ready-card .rct-label {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.14rem;
+  font-weight: 700; color: var(--accent); margin: 0 0 0.45rem;
+}}
+.shiba-ready-card .rct-quote {{ font-size: 0.88rem; color: var(--muted); line-height: 1.58; }}
+.stats-row {{ display: flex; gap: 0.9rem; margin-top: 1rem; }}
+.stat-chip {{
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 0.8rem 0.9rem; text-align: center;
+}}
+.stat-chip .s-icon {{ font-size: 1.1rem; }}
+.stat-chip .s-main {{ font-weight: 700; color: var(--accent); font-size: 0.92rem; }}
+.stat-chip .s-sub {{ font-size: 0.75rem; color: var(--muted); }}
+.privacy-note {{ font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 0.6rem; }}
+
+/* ─── Results page ──────────────────────────────────── */
+.results-title {{
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 1.85rem; font-weight: 700; color: var(--text); margin: 0 0 0.2rem;
+}}
+.results-sub {{ font-size: 0.9rem; color: var(--muted); }}
+.score-area {{ display: flex; flex-direction: column; align-items: center; gap: 0.7rem; padding-top: 0.5rem; }}
+.score-ring {{ width: 200px; height: 200px; }}
+.score-verdict {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.65rem;
+  font-weight: 700; color: var(--accent); text-align: center;
+}}
+.score-desc {{ font-size: 0.9rem; color: var(--muted); text-align: center; max-width: 34ch; line-height: 1.55; }}
+.shiba-rec-card {{
+  background: var(--surface-warm); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 1.2rem 1.4rem; margin-top: 0.9rem;
+}}
+.shiba-rec-card .rec-badge {{
+  display: inline-block; background: var(--accent); color: #fff;
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+  padding: 0.2rem 0.65rem; border-radius: 999px; margin-bottom: 0.65rem;
+}}
+.shiba-rec-card .rec-quote {{ font-size: 0.89rem; color: var(--text); line-height: 1.6; font-style: italic; }}
+.metric-card-v2 {{
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-card); padding: 1.3rem 1.5rem;
+  box-shadow: var(--shadow-card); height: 100%;
+  transition: transform 0.18s, box-shadow 0.18s;
+}}
+.metric-card-v2:hover {{ transform: translateY(-3px); box-shadow: var(--shadow-hover); }}
+.metric-card-v2 .mc-icon {{ font-size: 1.5rem; margin-bottom: 0.4rem; }}
+.metric-card-v2 .mc-label {{
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--muted);
+}}
+.metric-card-v2 .mc-value {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 2.5rem;
+  font-weight: 700; line-height: 1.1; margin: 0.15rem 0;
+}}
+.metric-card-v2 .mc-value span {{ font-size: 1.1rem; color: var(--muted); }}
+.metric-card-v2 .mc-track {{
+  height: 8px; background: #EDE4D8; border-radius: 999px; margin-top: 0.9rem; overflow: hidden;
+}}
+.metric-card-v2 .mc-fill {{ height: 100%; border-radius: 999px; }}
+
+/* ─── Skill badges ──────────────────────────────────── */
+.badge-wrap {{ display: flex; flex-wrap: wrap; gap: 0.42rem; }}
+.badge {{
+  display: inline-block; padding: 0.3rem 0.82rem; border-radius: 999px;
+  font-size: 0.82rem; font-weight: 500; border: 1px solid transparent;
+  animation: pop 0.38s ease both; transition: transform 0.12s;
+}}
+.badge:hover {{ transform: translateY(-1px); }}
+.badge-matched {{ background: var(--good-bg); color: var(--good); border-color: var(--good-border); }}
+.badge-missing {{ background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border); }}
+.badge-muted {{ background: #F0EBE3; color: var(--muted); border-color: var(--border); }}
+
+/* ─── Skill section card ────────────────────────────── */
+.skill-card {{
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-card); padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow-card); height: 100%;
+}}
+.skill-card-title {{
+  font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem;
+}}
+.skill-sub-label {{
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; margin: 0.9rem 0 0.55rem;
+}}
+.skill-sub-label.green {{ color: var(--good); }}
+.skill-sub-label.amber {{ color: var(--warn); }}
+
+/* ─── AI Rec section ────────────────────────────────── */
+.ai-rec-wrap {{
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-card); padding: 1.5rem 1.7rem;
+  box-shadow: var(--shadow-card);
+}}
+.ai-rec-heading {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.25rem;
+  font-weight: 700; color: var(--accent); margin: 0 0 1rem;
+}}
+.ai-tip {{
+  background: var(--accent-light); border-radius: 10px;
+  padding: 0.65rem 0.95rem; font-size: 0.84rem; color: var(--muted); margin-top: 1rem;
+}}
+
+/* ─── Section heading ───────────────────────────────── */
+.section-h {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.35rem;
+  font-weight: 700; color: var(--text); margin: 1.8rem 0 1rem 0;
+}}
+.hint {{ color: var(--muted); font-size: 0.9rem; }}
+
+/* ─── Footer ────────────────────────────────────────── */
+.shiba-footer {{
+  background: var(--bg); border-top: 1.5px solid var(--border);
+  padding: 2.2rem 0; margin-top: 3.5rem;
+}}
+.shiba-footer .f-logo {{
+  font-weight: 700; font-size: 1.05rem; color: var(--accent);
+}}
+.shiba-footer .f-desc {{ font-size: 0.82rem; color: var(--muted); margin-top: 0.35rem; }}
+.shiba-footer .f-links {{ display: flex; gap: 1.6rem; font-size: 0.84rem; }}
+.shiba-footer .f-links a {{ color: var(--muted); text-decoration: none; }}
+.shiba-footer .f-copy {{ font-size: 0.76rem; color: var(--muted); opacity: 0.65; margin-top: 1rem; }}
+
+/* ─── Alert ─────────────────────────────────────────── */
 [data-testid="stAlert"] {{ border-radius: 12px; }}
 
-/* ── Animations ───────────────────────────────────────────── */
+/* ─── Animations ────────────────────────────────────── */
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(14px); }} to {{ opacity: 1; transform: none; }} }}
-@keyframes pop {{ from {{ opacity: 0; transform: scale(.85); }} to {{ opacity: 1; transform: none; }} }}
-@keyframes growBar {{ from {{ width: 0 !important; }} }}
-
-/* ── Shiba chạy ngang background ───────────────────────────── */
-.shiba {{
-  position: fixed; bottom: 16px; left: 0; width: 92px; height: 70px; z-index: 1;
-  pointer-events: none; will-change: transform;
-  animation: shibaRun 14s linear infinite;
-}}
-.shiba .shiba-inner {{
-  width: 100%; height: 100%;
-  background: url("data:image/svg+xml;base64,{_SHIBA_B64}") no-repeat center / contain;
-  filter: drop-shadow(0 8px 6px rgba(90,61,43,.25));
-  animation: shibaBob .34s ease-in-out infinite;
-}}
-
-@keyframes shibaRun {{
-  0%   {{ transform: translateX(-140px); }}
-  100% {{ transform: translateX(calc(100vw + 60px)); }}
-}}
-@keyframes shibaBob {{ 0%,100% {{ transform: translateY(0) rotate(-1deg); }} 50% {{ transform: translateY(-6px) rotate(1deg); }} }}
+@keyframes pop {{ from {{ opacity: 0; transform: scale(0.85); }} to {{ opacity: 1; transform: none; }} }}
 
 @media (prefers-reduced-motion: reduce) {{
-  .shiba, .shiba .shiba-inner {{ animation: none; }}
-  .metric-card, .rec-card, .app-header, .badge {{ animation: none; }}
-  .shiba {{ left: 24px; }}
+  .badge {{ animation: none !important; }}
 }}
 </style>
-
-<div class="shiba"><div class="shiba-inner"></div></div>
 """
 
 
 def inject_css() -> None:
-    """Chèn CSS toàn cục + mascot shiba. Gọi 1 lần đầu mỗi lần render."""
     import streamlit as st
-
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+def render_footer() -> None:
+    import streamlit as st
+    st.markdown(
+        """
+        <div class="shiba-footer">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem">
+            <div>
+              <div class="f-logo">🐾 ShibaCV</div>
+              <div class="f-desc">Nền tảng AI hàng đầu trong lĩnh vực<br>tuyển dụng và phát triển nghề nghiệp.</div>
+              <div class="f-copy">© 2024 ShibaCV AI. Built with precision and treats.</div>
+            </div>
+            <div class="f-links" style="padding-top:0.3rem">
+              <a href="#">Terms</a><a href="#">Privacy</a><a href="#">Support</a><a href="#">Contact</a>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def score_color(score_0_1: float) -> str:
-    """Màu semantic theo điểm: <40 đỏ, 40-70 amber, >70 xanh."""
     pct = score_0_1 * 100
     if pct < 40:
         return COLORS["bad"]

@@ -1,18 +1,16 @@
-"""
-home.py – Trang chủ: upload CV, chọn vị trí mong muốn, nút Analyze.
-"""
+"""home.py – Trang upload CV."""
 
 from __future__ import annotations
 
 import logging
 
 from src.frontend.utils.api_client import APIError, analyze_cv, get_occupations
+from src.frontend.utils.styling import img_tag, render_footer
 
 logger = logging.getLogger(__name__)
 
 
 def _load_occupations() -> list[dict]:
-    """Lấy danh sách nghề (cache để không gọi API mỗi lần rerun)."""
     import streamlit as st
 
     @st.cache_data(show_spinner=False, ttl=300)
@@ -23,22 +21,21 @@ def _load_occupations() -> list[dict]:
 
 
 def render_home() -> None:
-    """Render trang chủ."""
     import streamlit as st
 
     st.markdown(
         """
-        <div class="app-header">
-          <div class="title">Đánh giá độ phù hợp CV ↔ Nghề nghiệp</div>
-          <div class="subtitle">Tải lên CV và chọn nhóm nghề mong muốn để nhận điểm phù hợp,
-          phân tích kỹ năng còn thiếu và khuyến nghị phát triển.</div>
+        <div style="padding-top:0.5rem">
+          <div class="page-h1">Cùng nâng cấp CV của bạn</div>
+          <div class="page-h1-sub">
+            Hãy tải CV của bạn lên và chọn lĩnh vực nghề nghiệp của mình.
+            Shiba AI sẽ lo phần còn lại.
+          </div>
         </div>
-        <hr class="app-divider"/>
         """,
         unsafe_allow_html=True,
     )
 
-    # Lấy danh sách nghề
     try:
         occupations = _load_occupations()
     except APIError as e:
@@ -52,29 +49,77 @@ def render_home() -> None:
 
     display_to_key = {o["display"]: o["key"] for o in occupations}
 
-    with st.form("analyze_form", clear_on_submit=False):
-        col1, col2 = st.columns([3, 2])
-        with col1:
+    col_form, col_shiba = st.columns([1.15, 0.85], gap="large")
+
+    # ── Left: form ───────────────────────────────────────────────────────────
+    with col_form:
+        with st.form("analyze_form", clear_on_submit=False):
             uploaded = st.file_uploader(
-                "CV của bạn (PDF hoặc DOCX)",
+                "Tải lên hồ sơ (PDF, DOCX)",
                 type=["pdf", "docx"],
                 accept_multiple_files=False,
+                help="Kéo thả hoặc nhấn để chọn tệp",
             )
-        with col2:
+
+            st.markdown(
+                """
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;margin-bottom:0.3rem">
+                  <span style="font-size:0.82rem;color:var(--muted)">📁</span>
+                  <span style="font-size:0.88rem;font-weight:600;color:var(--text)">Lĩnh vực nghề nghiệp của bạn</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             occ_display = st.selectbox(
-                "Lĩnh vực nghề nghiệp của bạn",
+                "Lĩnh vực nghề nghiệp",
                 options=list(display_to_key.keys()),
                 index=0,
+                label_visibility="collapsed",
             )
             include_rec = st.toggle("Sinh khuyến nghị AI", value=True)
+            st.markdown("<div style='margin-top:0.6rem'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("✦  Phân tích bằng AI", use_container_width=True)
+            st.markdown(
+                '<div class="privacy-note">🔒 Dữ liệu của bạn được bảo mật tuyệt đối bởi ShibaCV Guard.</div>',
+                unsafe_allow_html=True,
+            )
 
-        submitted = st.form_submit_button("Phân tích", width="stretch")
+    # ── Right: shiba + cards ─────────────────────────────────────────────────
+    with col_shiba:
+        st.markdown(
+            img_tag("shiba_ai.png", style="width:100%;max-width:320px;height:auto;display:block;margin:0 auto"),
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <div class="shiba-ready-card">
+              <div class="rct-label">🐾 Shiba đang sẵn sàng giúp bạn!</div>
+              <div class="rct-quote">
+                "Tôi sẽ quét qua hàng ngàn tiêu chuẩn tuyển dụng để đảm bảo
+                CV của bạn luôn dẫn đầu xu hướng thị trường."
+              </div>
+            </div>
+            <div class="stats-row">
+              <div class="stat-chip">
+                <div class="s-icon">✅</div>
+                <div class="s-main">Chính xác 99%</div>
+                <div class="s-sub">Phân tích sâu ATS</div>
+              </div>
+              <div class="stat-chip">
+                <div class="s-icon">⚡</div>
+                <div class="s-main">Tốc độ Shiba</div>
+                <div class="s-sub">Xong trong 15s</div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
+    # ── Submit ───────────────────────────────────────────────────────────────
     if submitted:
         if uploaded is None:
             st.warning("Vui lòng tải lên file CV trước.")
             return
-
         occ_key = display_to_key[occ_display]
         with st.spinner("Đang trích xuất CV, embed và đánh giá độ phù hợp…"):
             try:
@@ -87,8 +132,8 @@ def render_home() -> None:
             except APIError as e:
                 st.error(f"Lỗi phân tích: {e}")
                 return
-
-        # Lưu kết quả và chuyển sang trang kết quả
         st.session_state["result"] = result
         st.session_state["view"] = "result"
         st.rerun()
+
+    render_footer()

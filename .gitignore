@@ -11,3 +11,6 @@ data/app.db
 
 # Model weights — quá lớn (GB), không đưa vào git (GitHub chặn >100MB)
 models/
+
+# Claude Code internal
+.claude/

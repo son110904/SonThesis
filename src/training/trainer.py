@@ -42,6 +42,9 @@ from src.config import (
     EVAL_BATCH_SIZE,
     TRAIN_WARMUP_STEPS,
     TRAIN_EVAL_STEPS,
+    TRAIN_LEARNING_RATE,
+    TRAIN_MAX_SEQ_LENGTH,
+    TRAIN_BF16,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +71,7 @@ def train(
     train_batch_size: int = TRAIN_BATCH_SIZE,
     warmup_steps: int = TRAIN_WARMUP_STEPS,
     eval_steps: int = TRAIN_EVAL_STEPS,
+    learning_rate: float = TRAIN_LEARNING_RATE,
     val_ratio: float = 0.1,
     seed: int = 42,
     resume_from: str | None = None,
@@ -113,7 +117,7 @@ def train(
         logger.info(f"Load pretrained: {model_name}")
         model = SentenceTransformer(model_name, trust_remote_code=True)
 
-    model.max_seq_length = 512
+    model.max_seq_length = TRAIN_MAX_SEQ_LENGTH
 
     # Workaround: trên Python 3.14 + PyTorch 2.12, buffer position_ids
     # (persistent=False) bị corrupt ở index 0 do memory reuse khi init model.
@@ -148,6 +152,19 @@ def train(
     # Thư mục tạm để Trainer lưu checkpoints trong quá trình training
     checkpoints_dir = output_dir / "checkpoints"
 
+    # Đảm bảo có ÍT NHẤT vài lần eval/checkpoint trong lúc train: nếu eval_steps
+    # ≥ tổng số step thì Trainer không bao giờ eval/save giữa chừng và
+    # load_best_model_at_end mất tác dụng (không có best để chọn). Kẹp lại để luôn
+    # có ~5+ mốc đánh giá, bất kể dataset nhỏ tới đâu.
+    steps_per_epoch = max(1, len(train_examples) // train_batch_size)
+    total_steps = steps_per_epoch * epochs
+    if eval_steps >= total_steps:
+        eval_steps = max(1, total_steps // 5)
+        logger.warning(
+            f"eval_steps ≥ tổng step ({total_steps}); kẹp eval_steps={eval_steps} "
+            f"để có checkpoint cho load_best_model_at_end."
+        )
+
     args = SentenceTransformerTrainingArguments(
         output_dir=str(checkpoints_dir),
 
@@ -155,12 +172,13 @@ def train(
         num_train_epochs=epochs,
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=EVAL_BATCH_SIZE,
+        learning_rate=learning_rate,
         warmup_steps=warmup_steps,
-        # Mixed precision (fp16 VÀ bf16) gây gradient NaN ngay từ bước backward đầu
-        # tiên với gte-multilingual rope model trên build PyTorch hiện tại (forward
-        # fp32 vẫn bình thường). Train fp32 để ổn định. Dataset nhỏ nên không chậm.
+        # fp16 KHÔNG dùng (dải số hẹp → NaN với rope model). bf16 bật trên GPU
+        # (TRAIN_BF16): cùng dải mũ fp32 nên ổn định, dùng tensor core ⇒ nhanh hơn
+        # và giảm bộ nhớ → khỏi tràn VRAM 8GB. Có guard NaN bên dưới để fail-safe.
         fp16=False,
-        bf16=False,
+        bf16=TRAIN_BF16,
 
         # Evaluation & checkpointing
         eval_strategy="steps",
@@ -177,9 +195,8 @@ def train(
         seed=seed,
     )
 
-    total_steps = (len(train_examples) // train_batch_size) * epochs
     logger.info(
-        f"Training config: epochs={epochs}, batch={train_batch_size}, "
+        f"Training config: epochs={epochs}, batch={train_batch_size}, lr={learning_rate}, "
         f"total_steps={total_steps}, warmup={warmup_steps}, eval_every={eval_steps}"
     )
 
@@ -288,6 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size",  type=int,   default=TRAIN_BATCH_SIZE)
     parser.add_argument("--warmup",      type=int,   default=TRAIN_WARMUP_STEPS)
     parser.add_argument("--eval-steps",  type=int,   default=TRAIN_EVAL_STEPS)
+    parser.add_argument("--lr",          type=float, default=TRAIN_LEARNING_RATE)
     parser.add_argument("--val-ratio",   type=float, default=0.1)
     parser.add_argument("--output-dir",  type=str,   default=str(FINE_TUNED_MODEL_DIR))
     parser.add_argument("--resume-from", type=str,   default=None)
@@ -299,6 +317,7 @@ if __name__ == "__main__":
         train_batch_size=args.batch_size,
         warmup_steps=args.warmup,
         eval_steps=args.eval_steps,
+        learning_rate=args.lr,
         val_ratio=args.val_ratio,
         resume_from=args.resume_from,
     )
