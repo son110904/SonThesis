@@ -2,7 +2,7 @@
 styling.py – ShibaCV design system.
 
 Hệ thống ấm (rose-beige / terracotta) thể hiện ở mức premium: depth nhiều lớp,
-highlight inset trên bề mặt, glow nền mềm, typography Crimson Pro + Inter,
+highlight inset trên bề mặt, glow nền mềm, typography dùng DUY NHẤT Crimson Pro,
 micro-motion tôn trọng prefers-reduced-motion.
 """
 
@@ -47,7 +47,7 @@ def img_tag(filename: str, style: str = "width:100%;height:auto;display:block") 
 
 _CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
 
 :root {{
   --bg: {COLORS['bg']};
@@ -100,8 +100,13 @@ _CSS = f"""
 [data-testid="element-container"]:has(div:empty) + [data-testid="element-container"] {{ margin-top: 0 !important; }}
 
 /* ─── Base + warm ambient background ────────────────── */
+/* Toàn bộ frontend dùng DUY NHẤT Crimson Pro (gồm cả widget Streamlit). */
+html, body, .stApp, .stApp *,
+button, input, select, textarea,
+[data-baseweb], [data-baseweb] * {{
+  font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif !important;
+}}
 html, body {{
-  font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -131,7 +136,7 @@ p, .stMarkdown p {{ color: var(--text); }}
 .stButton > button, .stFormSubmitButton > button {{
   background: var(--accent-grad) !important; color: #fff !important;
   border: none !important; border-radius: 999px !important;
-  font-family: 'Inter', sans-serif !important; font-size: 0.97rem !important;
+  font-family: 'Crimson Pro', Georgia, serif !important; font-size: 1.02rem !important;
   font-weight: 600 !important; letter-spacing: 0.005em !important;
   padding: 0.72rem 2rem !important;
   box-shadow: var(--cta-shadow) !important;
@@ -303,7 +308,7 @@ div[data-baseweb="select"] > div:focus-within {{
   font-family: 'Crimson Pro', Georgia, serif; font-size: 2.7rem;
   font-weight: 700; line-height: 1.05; margin: 0.2rem 0; letter-spacing: -0.02em;
 }}
-.metric-card-v2 .mc-value span {{ font-size: 1.05rem; color: var(--muted); font-family: 'Inter', sans-serif; font-weight: 500; }}
+.metric-card-v2 .mc-value span {{ font-size: 1.1rem; color: var(--muted); font-weight: 500; }}
 .metric-card-v2 .mc-track {{
   height: 9px; background: #EFE6DA; border-radius: 999px; margin-top: 1rem; overflow: hidden;
 }}

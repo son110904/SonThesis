@@ -51,7 +51,7 @@ def render_match_gauge(match_score_0_1: float) -> None:
         letter-spacing="-1" fill="{COLORS['text']}">{pct:g}%</text>
   <!-- label -->
   <text x="{cx}" y="{cy + 26}" text-anchor="middle" dominant-baseline="middle"
-        font-family="'Inter', sans-serif" font-size="11" font-weight="700"
+        font-family="'Crimson Pro', Georgia, serif" font-size="12" font-weight="700"
         fill="{COLORS['muted']}" letter-spacing="2.5">MATCH SCORE</text>
 </svg>
 """
