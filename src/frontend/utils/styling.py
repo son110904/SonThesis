@@ -74,10 +74,42 @@ _CSS = f"""
 [data-testid="stToolbar"], header, [data-testid="stSidebarNav"]
 {{ display: none !important; }}
 
+/* ─── Streamlit layout normalization ────────────────── */
+/* Column containers: don't stretch columns to equal height */
+[data-testid="stHorizontalBlock"],
+[data-testid="stColumns"] {{
+  align-items: flex-start !important;
+}}
+/* Reduce default element gap inside columns */
+[data-testid="stColumn"] > div > [data-testid="stVerticalBlock"] {{
+  row-gap: 0.65rem !important;
+}}
+/* Form inner gap */
+[data-testid="stForm"] > [data-testid="stVerticalBlock"] {{
+  row-gap: 0.45rem !important;
+}}
+/* Center score gauge within its markdown container */
+[data-testid="stMarkdownContainer"]:has(.score-area) {{
+  display: flex;
+  justify-content: center;
+}}
+/* Ensure empty spacer divs don't take extra space */
+[data-testid="element-container"]:has(div:empty) + [data-testid="element-container"] {{
+  margin-top: 0 !important;
+}}
+
 /* ─── Base ──────────────────────────────────────────── */
 html, body {{ font-family: 'Inter', system-ui, sans-serif; background: var(--bg); }}
 .stApp {{ background: var(--bg) !important; color: var(--text); }}
-.block-container {{ padding-top: 1.8rem !important; padding-bottom: 5rem; max-width: 1200px; }}
+.block-container {{
+  padding-top: 1.8rem !important;
+  padding-bottom: 5rem !important;
+  padding-left: 2.5rem !important;
+  padding-right: 2.5rem !important;
+  max-width: 1240px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}}
 h1, h2, h3 {{ font-family: 'Crimson Pro', Georgia, serif; color: var(--text); letter-spacing: -0.01em; }}
 p, .stMarkdown p {{ color: var(--text); }}
 
@@ -132,9 +164,10 @@ div[data-baseweb="select"] > div {{
 }}
 .hero-img-card {{
   background: #F2EAE0; border-radius: 22px; overflow: hidden;
-  padding: 1.2rem; display: flex; align-items: center; justify-content: center;
+  padding: 1.2rem 1.2rem 0; display: flex; align-items: flex-end; justify-content: center;
+  min-height: 320px;
 }}
-.hero-img-card img {{ border-radius: 14px; width: 100%; height: auto; display: block; }}
+.hero-img-card img {{ border-radius: 14px 14px 0 0; width: 100%; height: auto; display: block; max-width: 380px; }}
 
 /* ─── Upload page ───────────────────────────────────── */
 .page-h1 {{
@@ -193,7 +226,7 @@ div[data-baseweb="select"] > div {{
 .metric-card-v2 {{
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--radius-card); padding: 1.3rem 1.5rem;
-  box-shadow: var(--shadow-card); height: 100%;
+  box-shadow: var(--shadow-card); height: auto;
   transition: transform 0.18s, box-shadow 0.18s;
 }}
 .metric-card-v2:hover {{ transform: translateY(-3px); box-shadow: var(--shadow-hover); }}
@@ -228,7 +261,7 @@ div[data-baseweb="select"] > div {{
 .skill-card {{
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--radius-card); padding: 1.4rem 1.5rem;
-  box-shadow: var(--shadow-card); height: 100%;
+  box-shadow: var(--shadow-card); height: auto;
 }}
 .skill-card-title {{
   font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem;
@@ -254,6 +287,41 @@ div[data-baseweb="select"] > div {{
   background: var(--accent-light); border-radius: 10px;
   padding: 0.65rem 0.95rem; font-size: 0.84rem; color: var(--muted); margin-top: 1rem;
 }}
+/* Converted markdown content inside ai-rec-wrap */
+.ai-rec-wrap h2, .ai-rec-wrap h3, .ai-rec-wrap h4 {{
+  font-family: 'Crimson Pro', Georgia, serif; color: var(--accent);
+  font-size: 1.05rem; font-weight: 700; margin: 0.9rem 0 0.35rem;
+}}
+.ai-rec-wrap ul {{
+  margin: 0.25rem 0 0.5rem 1.1rem; padding: 0;
+}}
+.ai-rec-wrap li {{
+  font-size: 0.88rem; line-height: 1.6; margin: 0.2rem 0; color: var(--text);
+}}
+.ai-rec-wrap p {{
+  font-size: 0.88rem; line-height: 1.65; color: var(--text); margin: 0.4rem 0;
+}}
+
+/* ─── AI CV Review (đầu ra trung tâm) ───────────────── */
+.rv-overall {{
+  background: var(--accent-light); border: 1.5px solid var(--accent);
+  border-radius: var(--radius-card); padding: 1.4rem 1.6rem; margin-bottom: 1.1rem;
+}}
+.rv-overall-label {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.15rem; font-weight: 700;
+  color: var(--accent); margin-bottom: 0.5rem;
+}}
+.rv-overall-body {{ font-size: 0.96rem; line-height: 1.6; color: var(--text); }}
+.rv-card {{
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-card); padding: 1.15rem 1.35rem; margin-bottom: 1rem;
+  box-shadow: var(--shadow-card);
+}}
+.rv-card-title {{ font-weight: 700; font-size: 0.98rem; margin-bottom: 0.6rem; }}
+.rv-list {{ margin: 0; padding-left: 1.15rem; }}
+.rv-list li {{ font-size: 0.9rem; line-height: 1.55; color: var(--text); margin-bottom: 0.35rem; }}
+.rv-road-step {{ border-left: 3px solid var(--accent); padding-left: 0.9rem; margin: 0.6rem 0; }}
+.rv-road-head {{ font-weight: 600; font-size: 0.92rem; color: var(--text); margin-bottom: 0.25rem; }}
 
 /* ─── Section heading ───────────────────────────────── */
 .section-h {{

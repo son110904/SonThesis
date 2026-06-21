@@ -13,7 +13,7 @@ def render_landing() -> None:
     with col_l:
         st.markdown(
             """
-            <div style="padding: 2.5rem 0 2rem">
+            <div style="padding: 3rem 0 2rem; min-height: 320px; display:flex; flex-direction:column; justify-content:center">
               <div class="hero-eyebrow"></div>
               <div class="hero-title">
                 Nâng tầm sự nghiệp cùng<br>

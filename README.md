@@ -50,7 +50,7 @@ OPENAI_API_KEY=sk-...
 ### Bước 1 — Khởi động Backend (FastAPI)
 
 ```bash
-uvicorn src.api.main:app --reload
+python -m uvicorn src.api.main:app --reload
 ```
 
 Backend chạy tại `http://localhost:8000`  
@@ -61,7 +61,7 @@ Swagger docs: `http://localhost:8000/docs`
 Mở terminal mới:
 
 ```bash
-streamlit run src/frontend/app.py
+python -m streamlit run src/frontend/app.py
 ```
 
 Giao diện mở tại `http://localhost:8501`
@@ -130,6 +130,33 @@ python run_offline.py
 ```
 
 Gồm 9 bước: preprocessing → skill extraction → profile builder → frequency analysis → TF-IDF → skill weight → embedding → knowledge base.
+
+---
+
+## Cải tiến chất lượng dữ liệu & đánh giá (`scripts/`)
+
+Các script bổ sung xử lý các điểm yếu về **chất lượng data**, **so khớp skill** và
+**đánh giá** (phục vụ bảo vệ luận văn). Chạy từ thư mục gốc.
+
+| Script | Mục đích | Lỗ hổng xử lý |
+|--------|----------|----------------|
+| `scripts/clean_occupation_profiles.py` | Gộp biến thể skill trùng (`REST API API`→`REST API`, `Node.JavaScript`→`Node.js`, `erp`/`ERP`…). Tự backup. | Chất lượng data (#3) |
+| `scripts/build_sub_occupations.py` | Tách 1 lĩnh vực thành **vị trí con** (Backend/Frontend/DevOps/Designer…); TF-IDF tính trên corpus sub-role nên Photoshop hết "lọt" core CNTT. | Granularity thô (#7) + gốc rễ (#3) |
+| `scripts/eval_baselines.py` | So sánh **fine-tuned vs base gte vs TF-IDF vs BM25** trên val split; báo Spearman/Pearson **và RMSE/MAE** (calibration điểm tuyệt đối). | Baseline (#6) + Calibration (#2) |
+| `scripts/ablation.py` | Quét `MATCH_ALPHA/BETA`, chọn trọng số theo dữ liệu thay vì 0.5/0.5. | Trọng số tùy tiện (#4) |
+| `scripts/calibrate_skill_threshold.py` | Chứng minh cosine trên skill ngắn không tách bạch đồng nghĩa/khác nghĩa → vì sao dùng synonym map thay vì semantic. | Skill matching (#5) |
+
+```bash
+python scripts/clean_occupation_profiles.py        # rồi: python reembed_occupations.py
+python scripts/build_sub_occupations.py --only backend_developer
+python scripts/eval_baselines.py
+python scripts/ablation.py
+```
+
+**So khớp skill** (`src/config.py`): `SKILL_MATCH_MODE="exact"` (mặc định) dùng
+canonicalize + `SYNONYM_MAP` song ngữ — bắt được `Học máy`=`Machine Learning` mà
+không false positive. Đặt `"semantic"` để thử embedding-cosine (đã đánh giá là kém
+tin cậy cho skill ngắn — xem `calibrate_skill_threshold.py`).
 
 ---
 
