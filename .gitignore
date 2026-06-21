@@ -14,3 +14,6 @@ models/
 
 # Claude Code internal
 .claude/
+
+# Design preview build output (dev tool)
+tools/preview_build/

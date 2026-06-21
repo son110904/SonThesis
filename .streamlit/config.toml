@@ -1,5 +1,6 @@
 # Cấu hình Streamlit — khóa theme sáng (Page Theme Lock của taste-skill) và
 # ẩn sidebar nav tự sinh để điều hướng hoàn toàn qua session_state.
+# Palette đồng bộ với design system trong src/frontend/utils/styling.py.
 
 [client]
 showSidebarNavigation = false
@@ -7,8 +8,8 @@ toolbarMode = "minimal"
 
 [theme]
 base = "light"
-primaryColor = "#c2562f"
-backgroundColor = "#f3ddd4"
-secondaryBackgroundColor = "#fff8f3"
-textColor = "#3c2b25"
+primaryColor = "#B85427"
+backgroundColor = "#F8F2E9"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1A1007"
 font = "sans serif"
