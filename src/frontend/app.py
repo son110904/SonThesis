@@ -14,8 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
-from src.frontend.utils import APIError, health, inject_css
-from src.frontend.pages import render_home, render_landing, render_result
+from src.frontend.utils import APIError, health, inject_css, render_header
+from src.frontend.pages import (
+    render_home,
+    render_landing,
+    render_result,
+    render_scanning_page,
+)
 
 
 def main() -> None:
@@ -44,8 +49,12 @@ def main() -> None:
 
     view = st.session_state["view"]
     if view == "result":
+        render_header()
         render_result()
+    elif view == "scanning":
+        render_scanning_page()
     elif view == "home":
+        render_header()
         render_home()
     else:
         render_landing()

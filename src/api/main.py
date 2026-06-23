@@ -43,7 +43,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:  # noqa: BLE001
         logger.error(f"Không seed được occupations: {e}")
 
-    logger.info("Backend sẵn sàng. (Model embedding sẽ load lazy ở request /analyze đầu tiên)")
+    # Prewarm embedding model ở thread nền: load model tốn ~6s (lần đầu/disk lạnh có
+    # thể tới ~1 phút). Nếu để lazy thì USER ĐẦU TIÊN phải gánh toàn bộ độ trễ này.
+    # Nạp sẵn lúc boot (không chặn server) → tới lúc có request /analyze model đã sẵn,
+    # còn việc encode mỗi CV vốn chỉ ~0.1s.
+    import threading
+
+    def _prewarm_model() -> None:
+        try:
+            from src.online.embedding_step5 import get_shared_model
+
+            logger.info("Prewarm: đang nạp embedding model ở nền...")
+            get_shared_model()
+            logger.info("Prewarm: embedding model đã sẵn sàng.")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Prewarm model thất bại (sẽ load lazy khi cần): {e}")
+
+    threading.Thread(target=_prewarm_model, name="model-prewarm", daemon=True).start()
+
+    logger.info("Backend sẵn sàng. (Embedding model đang prewarm ở nền)")
     yield
     logger.info("Tắt backend.")
 

@@ -1,13 +1,16 @@
 """
-skill_weight_calculator.py – Tính trọng số kỹ năng và phân loại core/optional.
+skill_weight_calculator.py – Tính trọng số kỹ năng và phân loại core/optional (Bước 6).
 
 Công thức:
-    weight = α × freq_normalized + β × tfidf_score
+    Skill Weight = α × Frequency Score + β × Specificity Score
 
     Trong đó:
-        freq_normalized: MinMaxScaler(frequency_score) về [0,1] per-occupation
-        tfidf_score:     đã normalized [0,1] từ Bước 5
-        α = 0.6, β = 0.4 (cấu hình trong config.py)
+        Frequency Score   : MinMaxScaler(frequency_score) về [0,1] per-occupation
+                            — mức độ PHỔ BIẾN của skill trong nghề (đại diện độ quan trọng).
+        Specificity Score : đã normalized [0,1] từ Bước 5 (tính bằng TF-IDF)
+                            — mức độ ĐẶC TRƯNG của skill với nghề, KHÔNG phải độ quan trọng.
+        α = 0.8, β = 0.2 (cấu hình trong config.py). Ưu tiên Frequency vì độ quan
+        trọng thực tế phụ thuộc nhiều hơn vào tần suất trong Job Description.
 
     KHÔNG normalize lần 2 — weight ở đây đã nằm trong [0,1] tự nhiên
     vì cả hai input đều là [0,1]. Double normalization sẽ ép mọi occupation
@@ -67,10 +70,10 @@ def compute_skill_weights(
       3. Phân loại core / optional theo threshold.
 
     Args:
-        freq_result:  Output compute_frequency()
-        tfidf_result: Output compute_tfidf()
-        alpha:        Trọng số frequency (default 0.6)
-        beta:         Trọng số TF-IDF   (default 0.4)
+        freq_result:  Output compute_frequency() — Frequency Score.
+        tfidf_result: Output compute_tfidf()     — Specificity Score (TF-IDF).
+        alpha:        Trọng số Frequency Score (default 0.8)
+        beta:         Trọng số Specificity Score (default 0.2)
         threshold:    Ngưỡng phân loại core skill (default 0.35)
 
     Returns:

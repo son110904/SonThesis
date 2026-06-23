@@ -1,6 +1,6 @@
 # ShibaCV — AI Career Intelligence
 
-Hệ thống đánh giá độ phù hợp CV ↔ Nghề nghiệp sử dụng mô hình embedding fine-tuned và GPT-4o Mini.
+Hệ thống đánh giá độ phù hợp CV ↔ Nghề nghiệp sử dụng mô hình embedding fine-tuned và GPT-4o.
 
 ---
 

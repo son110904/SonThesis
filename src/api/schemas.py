@@ -13,11 +13,15 @@ from pydantic import BaseModel, Field
 
 
 class OccupationItem(BaseModel):
-    """1 nghề trong dropdown."""
+    """1 nghề trong dropdown (hỗ trợ 2 cấp lĩnh vực → vị trí)."""
 
     key: str = Field(..., description="Key ổn định (tên file profile)")
     display: str = Field(..., description="Tên hiển thị")
     core_skill_count: int = 0
+    parent_key: Optional[str] = None
+    parent_display: Optional[str] = None
+    sub_display: Optional[str] = None
+    is_sub: bool = False
 
 
 class OccupationListResponse(BaseModel):
@@ -47,6 +51,8 @@ class AnalyzeResponse(BaseModel):
 
     candidate_profile: CandidateProfileOut
     ai_recommendation: Optional[str] = None
+    # AI CV Review có cấu trúc — đầu ra trung tâm (6 phần). None nếu thiếu LLM.
+    cv_review: Optional[dict] = None
 
 
 class HistoryItem(BaseModel):

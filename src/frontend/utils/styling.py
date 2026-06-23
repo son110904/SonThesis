@@ -106,6 +106,15 @@ button, input, select, textarea,
 [data-baseweb], [data-baseweb] * {{
   font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif !important;
 }}
+/* NHƯNG chừa lại font icon Material của Streamlit — nếu không, ligature
+   ("upload", "arrow_right"...) sẽ hiện ra dưới dạng chữ thô. */
+[data-testid="stIconMaterial"],
+span[data-testid="stIconMaterial"],
+.material-icons, .material-icons-outlined,
+.material-symbols-rounded, .material-symbols-outlined,
+span[class*="material-symbols"], i[class*="material"] {{
+  font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
+}}
 html, body {{
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -114,10 +123,10 @@ html, body {{
 .stApp {{
   color: var(--text);
   background:
-    radial-gradient(1100px 520px at 18% -8%, #FFFBF4 0%, rgba(255,251,244,0) 60%),
-    radial-gradient(900px 480px at 100% 0%, #FCEFE2 0%, rgba(252,239,226,0) 55%),
+    radial-gradient(1100px 560px at 18% 0%, #FFFBF4 0%, rgba(255,251,244,0) 60%),
+    radial-gradient(900px 520px at 100% 0%, #FCEFE2 0%, rgba(252,239,226,0) 55%),
     var(--bg) !important;
-  background-attachment: fixed;
+  background-repeat: no-repeat;
 }}
 .block-container {{
   padding-top: 2.2rem !important;
@@ -144,8 +153,8 @@ p, .stMarkdown p {{ color: var(--text); }}
 }}
 .stButton > button:hover, .stFormSubmitButton > button:hover {{
   color: #fff !important; filter: saturate(1.08) brightness(1.04) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 12px 28px -6px rgba(138,63,34,0.5), 0 3px 8px rgba(138,63,34,0.3) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 14px 32px -6px rgba(138,63,34,0.5), 0 4px 10px rgba(138,63,34,0.3) !important;
 }}
 .stButton > button:active, .stFormSubmitButton > button:active {{ transform: translateY(0) scale(0.99) !important; }}
 .stButton > button:focus-visible, .stFormSubmitButton > button:focus-visible {{
@@ -182,6 +191,29 @@ div[data-baseweb="select"] > div:focus-within {{
   border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(138,63,34,0.12) !important;
 }}
 
+/* ─── Brand header (bấm để về trang chủ) ────────────── */
+.st-key-brand_home {{ margin: -0.4rem 0 0; width: max-content; }}
+.st-key-brand_home button {{
+  background: transparent !important; color: var(--accent) !important;
+  border: none !important; box-shadow: none !important;
+  padding: 0.15rem 0.5rem 0.15rem 0 !important;
+  font-size: 1.55rem !important; font-weight: 700 !important;
+  letter-spacing: -0.012em !important; border-radius: 10px !important;
+  transition: color 0.16s ease, transform 0.16s ease !important;
+}}
+.st-key-brand_home button:hover {{
+  color: var(--accent-hover) !important; background: transparent !important;
+  filter: none !important; transform: translateY(-1px) !important; box-shadow: none !important;
+}}
+.st-key-brand_home button:active {{ transform: none !important; }}
+.st-key-brand_home button:focus-visible {{
+  outline: none !important; box-shadow: 0 0 0 3px rgba(212,116,26,0.28) !important;
+}}
+.shiba-nav-divider {{
+  height: 1px; background: linear-gradient(90deg, var(--border), transparent);
+  margin: 0.35rem 0 1.2rem;
+}}
+
 /* ─── Landing hero ──────────────────────────────────── */
 .hero-eyebrow {{
   display: inline-flex; align-items: center; gap: 0.5rem;
@@ -206,21 +238,25 @@ div[data-baseweb="select"] > div:focus-within {{
 }}
 .hero-img-card {{
   position: relative; border-radius: 26px; overflow: hidden;
-  padding: 1.4rem 1.4rem 0; display: flex; align-items: flex-end; justify-content: center;
-  min-height: 340px;
+  padding: 2rem 2.2rem; display: flex; align-items: center; justify-content: center;
+  min-height: 360px;
   background:
-    radial-gradient(120% 80% at 50% 0%, #FCEEDF 0%, #F2E5D8 70%, #EEDFD0 100%);
+    radial-gradient(120% 80% at 50% 35%, #FCEEDF 0%, #F2E5D8 70%, #EEDFD0 100%);
   box-shadow: var(--shadow-card), var(--inset-hi);
   border: 1px solid rgba(231,217,203,0.8);
 }}
 .hero-img-card::after {{
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(60% 45% at 50% 18%, rgba(212,116,26,0.10), transparent 70%);
+  background: radial-gradient(62% 50% at 50% 45%, rgba(212,116,26,0.12), transparent 70%);
 }}
 .hero-img-card img {{
-  position: relative; z-index: 1; border-radius: 16px 16px 0 0;
-  width: 100%; height: auto; display: block; max-width: 380px;
-  filter: drop-shadow(0 18px 30px rgba(74,38,18,0.16));
+  position: relative; z-index: 1;
+  width: 100%; height: auto; display: block; max-width: 100%;
+  filter: drop-shadow(0 22px 30px rgba(74,38,18,0.24));
+}}
+/* Ảnh shiba (đã tách nền) thả trôi — drop-shadow theo viền alpha */
+.shiba-float {{
+  filter: drop-shadow(0 16px 26px rgba(74,38,18,0.20));
 }}
 
 /* ─── Upload page ───────────────────────────────────── */
@@ -326,6 +362,17 @@ div[data-baseweb="select"] > div:focus-within {{
 .badge-missing {{ background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border); }}
 .badge-muted {{ background: #F2EBE2; color: var(--muted); border-color: var(--border); }}
 
+/* "+N kỹ năng khác" — nút bấm xổ ra phần dư (native <details>) */
+.badge-more {{ margin-top: 0.55rem; }}
+.badge-more > summary {{
+  list-style: none; cursor: pointer; user-select: none; width: max-content;
+  background: var(--accent-light); color: var(--accent); border-color: rgba(138,63,34,0.25);
+}}
+.badge-more > summary::-webkit-details-marker {{ display: none; }}
+.badge-more > summary::before {{ content: "▸ "; font-size: 0.8em; }}
+.badge-more[open] > summary::before {{ content: "▾ "; }}
+.badge-more > summary:hover {{ background: #F1DCCB; box-shadow: 0 4px 10px -2px rgba(74,38,18,0.18); }}
+
 /* ─── Skill section card ────────────────────────────── */
 .skill-card {{
   background: var(--surface); border: 1px solid var(--border);
@@ -395,6 +442,9 @@ div[data-baseweb="select"] > div:focus-within {{
 .rv-list li {{ font-size: 0.91rem; line-height: 1.6; color: var(--text); margin-bottom: 0.4rem; }}
 .rv-road-step {{ border-left: 3px solid var(--accent-mid); padding-left: 0.95rem; margin: 0.7rem 0; }}
 .rv-road-head {{ font-weight: 600; font-size: 0.94rem; color: var(--text); margin-bottom: 0.3rem; }}
+/* Các khối nhận xét xếp DỌC 1 cột, full-width; khung ôm sát nội dung. */
+.rv-stack {{ display: flex; flex-direction: column; }}
+.rv-stack .rv-card {{ margin-bottom: 1rem; }}
 
 /* ─── Section heading ───────────────────────────────── */
 .section-h {{
@@ -428,6 +478,77 @@ div[data-baseweb="select"] > div:focus-within {{
 /* ─── Alert ─────────────────────────────────────────── */
 [data-testid="stAlert"] {{ border-radius: 14px; }}
 
+/* ─── CV scanning / loading state (overlay full màn hình) ─ */
+.scan-wrap {{
+  position: fixed; inset: 0; z-index: 99990;
+  display: flex; align-items: center; justify-content: center; padding: 2rem;
+  background:
+    radial-gradient(1100px 560px at 18% 0%, #FFFBF4 0%, rgba(255,251,244,0) 60%),
+    radial-gradient(900px 520px at 100% 0%, #FCEFE2 0%, rgba(252,239,226,0) 55%),
+    var(--bg);
+  animation: scanIn 0.35s ease both;
+}}
+.scan-stage {{
+  display: flex; gap: 2.5rem; align-items: center; justify-content: center;
+  flex-wrap: wrap;
+}}
+.scan-doc {{
+  position: relative; width: 230px; height: 300px; flex: 0 0 auto;
+  background: #fff; border-radius: 14px; padding: 1.5rem 1.4rem;
+  box-shadow: var(--shadow-card), var(--inset-hi); overflow: hidden;
+  border: 1px solid var(--border);
+}}
+.scan-doc-head {{ height: 16px; width: 55%; border-radius: 6px; background: var(--accent-light); margin-bottom: 1.1rem; }}
+.scan-ln {{ height: 9px; border-radius: 5px; background: #ECE3D7; margin: 0.55rem 0; }}
+.scan-ln.w90 {{ width: 90%; }} .scan-ln.w80 {{ width: 80%; }} .scan-ln.w70 {{ width: 70%; }}
+.scan-ln.w60 {{ width: 60%; }} .scan-ln.w50 {{ width: 50%; }} .scan-ln.w85 {{ width: 85%; }}
+.scan-laser {{
+  position: absolute; left: 5%; right: 5%; height: 3px; top: 8%; border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent-mid) 35%, #F0A54E 50%, var(--accent-mid) 65%, transparent);
+  box-shadow: 0 0 18px 4px rgba(212,116,26,0.5); animation: laserMove 2.3s ease-in-out infinite;
+}}
+.scan-side {{ flex: 0 1 360px; min-width: 280px; }}
+.scan-title {{
+  font-family: 'Crimson Pro', Georgia, serif; font-size: 1.5rem; font-weight: 700;
+  color: var(--accent); margin-bottom: 0.5rem;
+}}
+.scan-quotes {{ position: relative; height: 1.6rem; margin-bottom: 1.3rem; }}
+.scan-q {{
+  position: absolute; left: 0; top: 0; font-size: 1rem; color: var(--muted);
+  opacity: 0; animation: qfade 9s ease-in-out infinite;
+}}
+.scan-q.q2 {{ animation-delay: 3s; }} .scan-q.q3 {{ animation-delay: 6s; }}
+.skel-row {{ display: flex; gap: 0.9rem; }}
+.skel-card {{
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-card); padding: 1.2rem 1.3rem; box-shadow: var(--shadow-card);
+}}
+.skel-line {{
+  border-radius: 6px; background: linear-gradient(100deg, #EEE5D9 30%, #FAF3EA 50%, #EEE5D9 70%);
+  background-size: 200% 100%; animation: shimmer 1.5s linear infinite;
+}}
+.skel-line.sk-sm {{ height: 10px; width: 60%; margin-bottom: 0.7rem; }}
+.skel-line.sk-lg {{ height: 30px; width: 45%; margin-bottom: 0.9rem; }}
+.skel-bar {{
+  height: 9px; border-radius: 999px; background: linear-gradient(100deg, #EEE5D9 30%, #FAF3EA 50%, #EEE5D9 70%);
+  background-size: 200% 100%; animation: shimmer 1.5s linear infinite;
+}}
+@keyframes scanIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
+@keyframes laserMove {{ 0% {{ top: 8%; }} 50% {{ top: 88%; }} 100% {{ top: 8%; }} }}
+@keyframes shimmer {{ 0% {{ background-position: 200% 0; }} 100% {{ background-position: -200% 0; }} }}
+@keyframes qfade {{
+  0% {{ opacity: 0; transform: translateY(7px); }}
+  5% {{ opacity: 1; transform: none; }}
+  28% {{ opacity: 1; transform: none; }}
+  34% {{ opacity: 0; transform: translateY(-7px); }}
+  100% {{ opacity: 0; }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+  .scan-laser {{ animation: none; top: 48%; }}
+  .scan-q {{ animation: none; }} .scan-q.q1 {{ opacity: 1; }}
+  .skel-line, .skel-bar {{ animation: none; }}
+}}
+
 /* ─── Entrance motion ───────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {{
   .block-container > div > [data-testid="stVerticalBlock"] > [data-testid="element-container"],
@@ -438,8 +559,30 @@ div[data-baseweb="select"] > div:focus-within {{
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(16px); }} to {{ opacity: 1; transform: none; }} }}
 @keyframes pop {{ from {{ opacity: 0; transform: scale(0.85); }} to {{ opacity: 1; transform: none; }} }}
 
+/* ─── Landing entrance (mượt, staggered) ────────────── */
+@media (prefers-reduced-motion: no-preference) {{
+  /* Tắt fadeUp mặc định trên hàng cột của landing để không animation chồng nhau,
+     nhường cho hiệu ứng staggered tinh tế bên dưới. */
+  .block-container:has(.land-hero) > div > [data-testid="stVerticalBlock"]
+    > [data-testid="stHorizontalBlock"] {{ animation: none !important; }}
+
+  .land-rise {{ opacity: 0; animation: landRise 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+                animation-delay: var(--d, 0s); will-change: transform, opacity; }}
+  .land-img-in {{ opacity: 0; animation: landImgIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.18s forwards;
+                  will-change: transform, opacity; }}
+}}
+@keyframes landRise {{
+  from {{ opacity: 0; transform: translateY(22px); filter: blur(4px); }}
+  to {{ opacity: 1; transform: none; filter: blur(0); }}
+}}
+@keyframes landImgIn {{
+  from {{ opacity: 0; transform: translateY(26px) scale(0.94); }}
+  to {{ opacity: 1; transform: none; }}
+}}
+
 @media (prefers-reduced-motion: reduce) {{
   .badge, .metric-card-v2, .rv-card, .stat-chip {{ animation: none !important; transition: none !important; }}
+  .land-rise, .land-img-in {{ opacity: 1 !important; animation: none !important; }}
 }}
 </style>
 """
@@ -450,11 +593,25 @@ def inject_css() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+def render_header() -> None:
+    """Thanh header với thương hiệu ShibaCV — bấm để quay về trang chủ (landing)."""
+    import streamlit as st
+
+    if st.button("🐾 ShibaCV", key="brand_home", help="Về trang chủ"):
+        st.session_state["view"] = "landing"
+        st.rerun()
+    st.markdown('<div class="shiba-nav-divider"></div>', unsafe_allow_html=True)
+
+
 def render_footer() -> None:
     import streamlit as st
     st.markdown(
         """
         <div class="shiba-footer">
+          <div style="background:linear-gradient(135deg,rgba(250,227,210,0.6),rgba(255,245,236,0.4));border:1.5px solid rgba(138,63,34,0.15);border-radius:12px;padding:0.9rem 1.2rem;margin-bottom:1.5rem;text-align:center">
+            <div style="font-size:0.85rem;color:var(--accent);font-weight:600;margin-bottom:0.3rem">⚠️ Lưu ý quan trọng</div>
+            <div style="font-size:0.82rem;color:var(--text);line-height:1.5">AI có thể mắc lỗi. Hãy kiểm tra các thông tin trước khi sử dụng.</div>
+          </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem">
             <div>
               <div class="f-logo">🐾 ShibaCV</div>
@@ -463,6 +620,48 @@ def render_footer() -> None:
             </div>
             <div class="f-links" style="padding-top:0.3rem">
               <a href="#">Điều khoản</a><a href="#">Bảo mật</a><a href="#">Hỗ trợ</a><a href="#">Liên hệ</a>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_scanning() -> None:
+    """Màn hình loading khi AI quét CV: laser scan + thoại Shiba fade + skeleton."""
+    import streamlit as st
+    st.markdown(
+        """
+        <div class="scan-wrap">
+          <div class="scan-stage">
+            <div class="scan-doc">
+              <div class="scan-doc-head"></div>
+              <div class="scan-ln w80"></div><div class="scan-ln w60"></div>
+              <div class="scan-ln w90"></div><div class="scan-ln w70"></div>
+              <div class="scan-ln w85"></div><div class="scan-ln w50"></div>
+              <div class="scan-ln w70"></div><div class="scan-ln w85"></div>
+              <div class="scan-laser"></div>
+            </div>
+            <div class="scan-side">
+              <div class="scan-title">🐾 Shiba đang phân tích CV của bạn…</div>
+              <div class="scan-quotes">
+                <span class="scan-q q1">Shiba đang đọc kỹ năng của bạn…</span>
+                <span class="scan-q q2">Đang đối chiếu với hàng ngàn tiêu chuẩn…</span>
+                <span class="scan-q q3">Sắp xong rồi, gâu gâu! 🐶</span>
+              </div>
+              <div class="skel-row">
+                <div class="skel-card">
+                  <div class="skel-line sk-sm"></div>
+                  <div class="skel-line sk-lg"></div>
+                  <div class="skel-bar"></div>
+                </div>
+                <div class="skel-card">
+                  <div class="skel-line sk-sm"></div>
+                  <div class="skel-line sk-lg"></div>
+                  <div class="skel-bar"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

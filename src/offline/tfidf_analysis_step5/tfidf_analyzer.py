@@ -1,10 +1,14 @@
 """
-tfidf_analyzer.py – Tính TF-IDF score của từng skill giữa các occupation.
+tfidf_analyzer.py – Specificity Analysis (Bước 5): đo mức độ ĐẶC TRƯNG của skill.
+
+Specificity Score được tính bằng TF-IDF, nhưng CHỈ dùng để đo mức độ đặc trưng của
+skill đối với một nghề — KHÔNG đại diện cho độ quan trọng của skill (độ quan trọng do
+Frequency Score đảm nhận ở Bước 6).
 
 Mục tiêu:
-    Xác định mức độ ĐẶC TRƯNG của một skill đối với một nghề cụ thể.
-    Skill xuất hiện nhiều ở MỌI nghề (vd: Photoshop) → TF-IDF thấp.
-    Skill xuất hiện nhiều ở IT nhưng ít ở ngành khác (vd: Docker) → TF-IDF cao.
+    Xác định mức độ ĐẶC TRƯNG (Specificity) của một skill đối với một nghề cụ thể.
+    Skill xuất hiện nhiều ở MỌI nghề (vd: Photoshop) → Specificity thấp.
+    Skill xuất hiện nhiều ở IT nhưng ít ở ngành khác (vd: Docker) → Specificity cao.
 
 Định nghĩa (occupation-as-document model):
     Mỗi occupation là một "document".

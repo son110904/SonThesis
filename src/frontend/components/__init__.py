@@ -5,6 +5,7 @@ from src.frontend.components.badges import render_skill_badges
 from src.frontend.components.cards import (
     render_metric_card,
     render_recommendation_card,
+    render_cv_review,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "render_skill_badges",
     "render_metric_card",
     "render_recommendation_card",
+    "render_cv_review",
 ]

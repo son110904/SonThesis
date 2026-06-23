@@ -41,7 +41,7 @@ def render_result() -> None:
     with hdr_l:
         st.markdown(
             f"""
-            <div class="results-title">AI CV Review</div>
+            <div class="results-title">Kết quả phân tích</div>
             <div class="results-sub">
               Vị trí ứng tuyển: <strong style="color:var(--accent)">{html.escape(result['occupation_display'])}</strong>
               &nbsp;•&nbsp; Phân tích lúc {now_str}
@@ -61,15 +61,18 @@ def render_result() -> None:
     with score_col:
         render_match_gauge(match)
         st.markdown(
-            f"""<div style="text-align:center;margin-top:0.5rem">
+            f"""<div style="text-align:center;margin-top:0.5rem;display:flex;flex-direction:column;align-items:center">
               <div class="score-verdict">{verdict_label}</div>
-              <div class="score-desc" style="margin-top:0.3rem">{verdict_desc}</div>
+              <div class="score-desc" style="margin-top:0.8rem;padding:1rem;border:1.5px solid var(--accent);border-radius:8px;background-color:rgba(255,255,255,0.02);text-align:center;max-width:280px">{verdict_desc}</div>
             </div>""",
             unsafe_allow_html=True,
         )
     with shiba_col:
         st.markdown(
-            img_tag("shiba_win.png", style="width:100%;max-width:240px;height:auto;display:block;margin:0 auto"),
+            img_tag(
+                "shiba_win_cut.png",
+                style="width:100%;max-width:250px;height:auto;display:block;margin:0 auto",
+            ).replace("<img ", '<img class="shiba-float" '),
             unsafe_allow_html=True,
         )
 

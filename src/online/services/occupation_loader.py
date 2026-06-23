@@ -53,19 +53,36 @@ def _load_all() -> dict[str, dict]:
 
 def list_occupations() -> list[dict]:
     """
-    Danh sách nghề cho dropdown frontend.
+    Danh sách nghề cho dropdown frontend (hỗ trợ 2 cấp: lĩnh vực → vị trí).
+
+    Mỗi item có thêm:
+        parent_key/parent_display: lĩnh vực cha. Với profile gốc (lĩnh vực) thì
+            parent_key = chính nó. Với sub-occupation thì = `_parent`.
+        sub_display: tên vị trí con (None nếu là lĩnh vực gốc).
+        is_sub:      True nếu là vị trí con.
 
     Returns:
-        List[{"key": str, "display": str, "core_skill_count": int}] sắp theo display.
+        List[dict] sắp theo display.
     """
-    items = [
-        {
+    all_profiles = _load_all()
+    items = []
+    for key, prof in all_profiles.items():
+        parent_key = prof.get("_parent")
+        is_sub = bool(parent_key)
+        if is_sub:
+            parent_display = prof.get("_parent_display") or _display_name(parent_key)
+            sub_display = prof.get("_sub_display") or prof["_display"]
+        else:
+            parent_key, parent_display, sub_display = key, prof["_display"], None
+        items.append({
             "key": key,
             "display": prof["_display"],
             "core_skill_count": len(prof.get("core_skills", {})),
-        }
-        for key, prof in _load_all().items()
-    ]
+            "parent_key": parent_key,
+            "parent_display": parent_display,
+            "sub_display": sub_display,
+            "is_sub": is_sub,
+        })
     return sorted(items, key=lambda x: x["display"])
 
 

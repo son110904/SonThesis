@@ -3,7 +3,7 @@ profile_builder.py – Dựng Candidate Profile từ văn bản CV.
 
 Bước 3-4 của Online Pipeline. Chiến lược LAI:
     - skills:                regex extractor (nhất quán với Occupation Profile)
-    - experience/projects/education: LLM (GPT-4o Mini) trích có cấu trúc
+    - experience/projects/education: LLM (GPT-4o) trích có cấu trúc
 
 Nếu LLM không khả dụng (thiếu key) → 3 trường LLM trả [] nhưng skills vẫn có,
 đủ cho semantic matching + weighted skill scoring.

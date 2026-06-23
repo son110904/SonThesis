@@ -1,5 +1,5 @@
 """
-llm_client.py – Wrapper mỏng quanh OpenAI Chat Completions (GPT-4o Mini).
+llm_client.py – Wrapper mỏng quanh OpenAI Chat Completions (mặc định GPT-4o).
 
 Dùng chung cho:
     - Trích experience/projects/education (candidate_profile)

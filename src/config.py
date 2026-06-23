@@ -54,10 +54,30 @@ TRAIN_MAX_SEQ_LENGTH: int = 256
 # guard chặn lưu model NaN nên an toàn. Đặt False để quay lại fp32 nếu cần.
 TRAIN_BF16: bool = True
 
-# ── Tham số Skill Weight ────────────────────────────────────────────────────
-ALPHA: float = 0.6          # trọng số frequency
-BETA: float = 0.4           # trọng số TF-IDF
+# ── Tham số Skill Weight (Bước 6) ───────────────────────────────────────────
+# Skill Weight = ALPHA × Frequency Score + BETA × Specificity Score
+#   Frequency  : mức độ PHỔ BIẾN của skill trong JD của nghề (đại diện độ quan trọng).
+#   Specificity: mức độ ĐẶC TRƯNG của skill với nghề (tính bằng TF-IDF, Bước 5).
+# Ưu tiên Frequency (0.8) vì trong thực tế tuyển dụng, độ quan trọng của kỹ năng
+# phụ thuộc nhiều hơn vào tần suất xuất hiện trong Job Description; Specificity (0.2)
+# chỉ điều chỉnh nhẹ để skill quá phổ thông (xuất hiện ở mọi nghề) không bị thổi phồng.
+# ⚠️ Đổi giá trị này phải chạy lại Offline Pipeline (run_offline.py + build_sub_
+# occupations.py) để regenerate occupation profiles thì mới có hiệu lực.
+ALPHA: float = 0.8          # trọng số Frequency Score
+BETA: float = 0.2           # trọng số Specificity Score (TF-IDF)
 CORE_SKILL_THRESHOLD: float = 0.5   # weight >= threshold → core_skill
+
+# ── Phân tầng kỹ năng theo skill_weight (dùng cho Skill Gap / missing skills) ──
+# 3 tầng theo trọng số:
+#   Core       : weight >= SKILL_TIER_CORE       → kỹ năng cốt lõi, bắt buộc.
+#   Important  : SKILL_TIER_IMPORTANT <= w < CORE → kỹ năng quan trọng, nên có.
+#   Supporting : weight <  SKILL_TIER_IMPORTANT   → kỹ năng phụ / đuôi-dài (nhiễu).
+# missing_skills CHỈ xét Core + Important (w >= SKILL_TIER_IMPORTANT); bỏ Supporting
+# để không liệt kê hàng trăm skill weight ~0 (vd giáo viên có 147 skill <0.15).
+# Lưu ý: đây là phân tầng ÁP DỤNG LÚC PHÂN TÍCH (online), đọc weight có sẵn trong
+# profile → KHÔNG cần chạy lại offline pipeline khi đổi giá trị.
+SKILL_TIER_CORE: float = 0.4
+SKILL_TIER_IMPORTANT: float = 0.15
 
 # ── Cột văn bản trong VietJobs_JD.csv ──────────────────────────────────────
 JD_TEXT_COLS: list[str] = ["description", "requirements_text", "technical_skills", "soft_skills"]
@@ -75,13 +95,27 @@ MATCH_SCORE_COL: str = "ai_match_score"
 
 # ── Final Score: match_score = MATCH_ALPHA*semantic + MATCH_BETA*weighted ──
 # (khác ALPHA/BETA ở trên — kia là trọng số frequency vs tf-idf của skill weight)
+# 0.5/0.5 là điểm khởi đầu trung lập; giá trị "tốt nhất" nên chọn từ ablation
+# (scripts/ablation.py quét grid α+β=1 và đo tương quan với ai_match_score).
 MATCH_ALPHA: float = 0.5    # trọng số semantic similarity
 MATCH_BETA: float = 0.5     # trọng số weighted skill score
+
+# ── Skill matching (Bước 8 & 10) ────────────────────────────────────────────
+# "exact" (MẶC ĐỊNH): khớp chuỗi sau canonicalize + SYNONYM_MAP song ngữ →
+#   deterministic, bắt được "Học máy"="Machine Learning", "Node.JavaScript"=
+#   "Node.js" mà KHÔNG có false positive. Đáng tin cậy, không cần model.
+# "semantic" (THỬ NGHIỆM): đo cosine embedding giữa skill nghề ↔ skill ứng viên.
+#   ĐÃ ĐÁNH GIÁ và thấy KHÔNG đáng tin trên cụm skill NGẮN: với gte (cả base lẫn
+#   fine-tuned) synonym ~0.59 trong khi cặp khác nghĩa lại ~0.75 → không tồn tại
+#   ngưỡng tách bạch (anisotropy). Giữ lại để so sánh/đánh giá, KHÔNG bật mặc định.
+#   Xem scripts/calibrate_skill_threshold.py để tự kiểm chứng.
+SKILL_MATCH_MODE: str = os.getenv("SKILL_MATCH_MODE", "exact")
+SKILL_MATCH_THRESHOLD: float = float(os.getenv("SKILL_MATCH_THRESHOLD", "0.75"))
 
 # ── LLM (AI Recommendation + trích experience/projects/education) ───────────
 # Key đọc từ biến môi trường OPENAI_API_KEY. Thiếu key → degrade graceful.
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
 LLM_TIMEOUT_SECONDS: float = 60.0
 LLM_MAX_RETRIES: int = 2
 

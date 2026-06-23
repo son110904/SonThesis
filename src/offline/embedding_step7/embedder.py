@@ -120,8 +120,13 @@ def load_model(use_finetuned: bool = True):
     """
     from sentence_transformers import SentenceTransformer
 
+    # Model local → local_files_only=True để bỏ round-trip kiểm tra HF hub mỗi lần
+    # load (tránh treo/chậm khi mạng chập chờn). Pretrained theo tên thì có thể cần
+    # tải lần đầu nên KHÔNG ép offline.
+    local_only = False
     if use_finetuned and FINE_TUNED_MODEL_DIR.exists():
         model_path = str(FINE_TUNED_MODEL_DIR)
+        local_only = True
         logger.info(f"Load fine-tuned model từ: {model_path}")
     else:
         model_path = EMBEDDING_MODEL_NAME
@@ -133,7 +138,9 @@ def load_model(use_finetuned: bool = True):
         else:
             logger.info(f"Load pretrained model: {model_path}")
 
-    model = SentenceTransformer(model_path, trust_remote_code=True)
+    model = SentenceTransformer(
+        model_path, trust_remote_code=True, local_files_only=local_only
+    )
     model.max_seq_length = 512
     _reset_position_ids(model)
 

@@ -95,6 +95,9 @@ class AnalysisResult:
     skill_gap: SkillGap
     candidate_profile: CandidateProfile
     ai_recommendation: Optional[str] = None
+    # AI CV Review có cấu trúc (đầu ra TRUNG TÂM): overall_assessment, strengths,
+    # missing_skills, cv_quality, recommendations, learning_roadmap.
+    cv_review: Optional[dict] = None
 
     def to_dict(self) -> dict:
         return {
@@ -108,4 +111,5 @@ class AnalysisResult:
             "extra_skills": self.skill_gap.extra_skills,
             "candidate_profile": self.candidate_profile.to_dict(),
             "ai_recommendation": self.ai_recommendation,
+            "cv_review": self.cv_review,
         }

@@ -7,7 +7,7 @@ from src.frontend.utils.api_client import (
     get_occupations,
     health,
 )
-from src.frontend.utils.styling import inject_css, COLORS
+from src.frontend.utils.styling import inject_css, render_header, COLORS
 
 __all__ = [
     "APIError",
@@ -16,5 +16,6 @@ __all__ = [
     "get_occupations",
     "health",
     "inject_css",
+    "render_header",
     "COLORS",
 ]

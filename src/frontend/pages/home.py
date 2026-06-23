@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from src.frontend.utils.api_client import APIError, analyze_cv, get_occupations
+from src.frontend.utils.api_client import APIError, get_occupations
 from src.frontend.utils.styling import img_tag, render_footer
 
 logger = logging.getLogger(__name__)
@@ -158,19 +158,15 @@ def render_home() -> None:
         if uploaded is None:
             st.warning("Vui lòng tải lên file CV trước.")
             return
-        with st.spinner("Đang trích xuất CV, embed và đánh giá độ phù hợp…"):
-            try:
-                result = analyze_cv(
-                    file_bytes=uploaded.getvalue(),
-                    filename=uploaded.name,
-                    occupation_key=occ_key,
-                    include_recommendation=include_rec,
-                )
-            except APIError as e:
-                st.error(f"Lỗi phân tích: {e}")
-                return
-        st.session_state["result"] = result
-        st.session_state["view"] = "result"
+        # Lưu job vào session rồi rerun -> lần chạy sau sẽ hiện màn hình quét CV
+        # (thay vì spinner mặc định) và gọi analyze_cv ở đó.
+        st.session_state["cv_job"] = {
+            "file_bytes": uploaded.getvalue(),
+            "filename": uploaded.name,
+            "occupation_key": occ_key,
+            "include_recommendation": include_rec,
+        }
+        st.session_state["view"] = "scanning"
         st.rerun()
 
     render_footer()

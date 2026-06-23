@@ -91,7 +91,7 @@ def render_recommendation_card(markdown_text: str | None) -> None:
         st.markdown(
             """<div class="ai-rec-wrap">
               <p style="color:var(--muted);font-size:.9rem">
-                Chưa có khuyến nghị. Cần <code>OPENAI_API_KEY</code> để bật GPT-4o Mini.
+                Chưa có khuyến nghị. Cần <code>OPENAI_API_KEY</code> để bật GPT-4o.
               </p>
             </div>""",
             unsafe_allow_html=True,
@@ -136,18 +136,15 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
             unsafe_allow_html=True,
         )
 
-    # 2-5. Các khối nhận xét
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        st.markdown(_review_block("Điểm mạnh", "💪", review.get("strengths", []), "#2e7d5b"),
-                    unsafe_allow_html=True)
-        st.markdown(_review_block("Chất lượng CV", "📝", review.get("cv_quality", []), "#b06a00"),
-                    unsafe_allow_html=True)
-    with c2:
-        st.markdown(_review_block("Kỹ năng còn thiếu", "🔍", review.get("missing_skills", []), "#b54708"),
-                    unsafe_allow_html=True)
-        st.markdown(_review_block("Khuyến nghị cải thiện", "✦", review.get("recommendations", []), "var(--accent)"),
-                    unsafe_allow_html=True)
+    # 2-5. Các khối nhận xét — xếp DỌC trong MỘT cột để không bị lệch khung;
+    # mỗi .rv-card cao theo nội dung (height auto) nên khung luôn ôm sát số chữ.
+    blocks = (
+        _review_block("Điểm mạnh", "💪", review.get("strengths", []), "#2e7d5b")
+        + _review_block("Chất lượng CV", "📝", review.get("cv_quality", []), "#b06a00")
+        + _review_block("Kỹ năng còn thiếu", "🔍", review.get("missing_skills", []), "#b54708")
+        + _review_block("Khuyến nghị cải thiện", "✦", review.get("recommendations", []), "var(--accent)")
+    )
+    st.markdown(f'<div class="rv-stack">{blocks}</div>', unsafe_allow_html=True)
 
     # 6. Learning roadmap — dạng timeline
     roadmap = review.get("learning_roadmap", [])

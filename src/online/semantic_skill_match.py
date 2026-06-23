@@ -59,12 +59,15 @@ def _normalize(skill: str) -> str:
 
 @lru_cache(maxsize=1)
 def _get_model():
-    """Lazy-load + cache fine-tuned model. None nếu không load được."""
+    """
+    Lấy model dùng CHUNG với candidate_embedder (cùng 1 instance đã prewarm) thay vì
+    load thêm bản thứ 2 → tiết kiệm ~6s và một bản sao RAM. None nếu không load được.
+    """
     try:
-        from src.offline.embedding_step7.embedder import load_model
+        from src.online.embedding_step5 import get_shared_model
 
-        model = load_model(use_finetuned=True)
-        logger.info("semantic_skill_match: model đã sẵn sàng.")
+        model = get_shared_model(use_finetuned=True)
+        logger.info("semantic_skill_match: dùng chung model đã nạp.")
         return model
     except Exception as e:  # noqa: BLE001
         logger.error(f"semantic_skill_match: không load được model ({e}) → fallback exact.")

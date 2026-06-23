@@ -52,15 +52,15 @@ def run(skip_training: bool = False, use_pretrained: bool = False,
 
     # ── Bước 1: Load + Clean ──────────────────────────────────────────────────
     logger.info("\n[BƯỚC 1] Data Loading & Text Cleaning")
-    from src.offline.preprocessing.data_loader import load_jd_dataset
-    from src.offline.preprocessing.text_cleaner import clean_jd_dataframe
+    from src.offline.preprocessing_step1.data_loader import load_jd_dataset
+    from src.offline.preprocessing_step1.text_cleaner import clean_jd_dataframe
 
     df_jd_clean = clean_jd_dataframe(load_jd_dataset())
     logger.info(f"  ✓ JD dataset: {df_jd_clean.shape[0]} hàng")
 
     # ── Bước 2: Skill Extraction ──────────────────────────────────────────────
     logger.info("\n[BƯỚC 2] Skill Extraction")
-    from src.offline.skill_extraction.extractor import extract_all
+    from src.offline.skill_extraction_step2.extractor import extract_all
 
     records = extract_all(df_jd_clean)
     avg_skills = sum(len(r["skills"]) for r in records) / len(records)
@@ -68,28 +68,28 @@ def run(skip_training: bool = False, use_pretrained: bool = False,
 
     # ── Bước 3: Occupation Profile Builder ───────────────────────────────────
     logger.info("\n[BƯỚC 3] Occupation Profile Building")
-    from src.offline.profile_builder.occupation_profile_builder import build_occupation_profiles
+    from src.offline.profile_builder_step3.occupation_profile_builder import build_occupation_profiles
 
     profiles = build_occupation_profiles(records)
     logger.info(f"  ✓ {len(profiles)} occupation profiles")
 
     # ── Bước 4: Frequency Analysis ────────────────────────────────────────────
     logger.info("\n[BƯỚC 4] Frequency Analysis")
-    from src.offline.frequency_analysis.frequency_analyzer import compute_frequency
+    from src.offline.frequency_analysis_step4.frequency_analyzer import compute_frequency
 
     freq_result = compute_frequency(profiles)
     logger.info(f"  ✓ {sum(len(v) for v in freq_result.values())} skill entries")
 
     # ── Bước 5: TF-IDF Analysis ───────────────────────────────────────────────
     logger.info("\n[BƯỚC 5] TF-IDF Analysis")
-    from src.offline.tfidf_analysis.tfidf_analyzer import compute_tfidf
+    from src.offline.tfidf_analysis_step5.tfidf_analyzer import compute_tfidf
 
     tfidf_result = compute_tfidf(profiles, freq_result)
     logger.info(f"  ✓ TF-IDF computed cho {len(tfidf_result)} occupation")
 
     # ── Bước 6: Skill Weight ──────────────────────────────────────────────────
     logger.info("\n[BƯỚC 6] Skill Weight Calculation")
-    from src.offline.skill_weight.skill_weight_calculator import (
+    from src.offline.skill_weight_step6.skill_weight_calculator import (
         compute_skill_weights, weight_result_to_profile_format
     )
 
@@ -127,7 +127,7 @@ def run(skip_training: bool = False, use_pretrained: bool = False,
 
     # ── Bước 7: Embedding ─────────────────────────────────────────────────────
     logger.info("\n[BƯỚC 7] Embedding Occupation Profiles")
-    from src.offline.embedding.embedder import load_model, embed_occupation_profiles
+    from src.offline.embedding_step7.embedder import load_model, embed_occupation_profiles
 
     model = load_model(use_finetuned=use_finetuned)
     occ_embeddings = embed_occupation_profiles(enriched, model=model)
@@ -136,7 +136,7 @@ def run(skip_training: bool = False, use_pretrained: bool = False,
 
     # ── Bước 9: Knowledge Base ────────────────────────────────────────────────
     logger.info("\n[BƯỚC 9] Building Occupation Knowledge Base")
-    from src.offline.knowledge_base.knowledge_base_builder import (
+    from src.offline.knowledge_base_step9.knowledge_base_builder import (
         build_from_inputs, load_knowledge_base, summarize_knowledge_base
     )
 

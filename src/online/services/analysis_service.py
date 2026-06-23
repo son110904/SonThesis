@@ -25,10 +25,11 @@ from src.online.extraction_step2 import extract_text_from_bytes
 from src.online.candidate_profile_step4 import build_candidate_profile
 from src.online.embedding_step5 import embed_candidate
 from src.online.semantic_matching_step7 import compute_semantic_score
+from src.online.semantic_skill_match import match_skills
 from src.online.weighted_matching_step8 import compute_weighted_skill_score
 from src.online.scoring_step9 import compute_final_score
 from src.online.skill_gap_step10 import analyze_skill_gap
-from src.online.recommendation_step11 import generate_recommendation
+from src.online.recommendation_step11 import generate_cv_review, cv_review_to_markdown
 from src.online.services.occupation_loader import get_occupation
 
 logger = logging.getLogger(__name__)
@@ -87,24 +88,32 @@ def analyze_cv(
     # Bước 7: semantic matching
     semantic_score = compute_semantic_score(candidate_embedding, occ_embedding)
 
+    # Skill matching dùng chung cho Bước 8 & 10 (embed skill 1 lần, theo config mode).
+    occ_skills = list({**occupation.get("optional_skills", {}),
+                       **occupation.get("core_skills", {})}.keys())
+    skill_match = match_skills(profile.skills, occ_skills)
+
     # Bước 8: weighted skill matching
-    weighted_score = compute_weighted_skill_score(profile.skills, occupation)
+    weighted_score = compute_weighted_skill_score(profile.skills, occupation, skill_match)
 
     # Bước 9: final score
     scores = compute_final_score(semantic_score, weighted_score)
 
     # Bước 10: skill gap
-    skill_gap = analyze_skill_gap(profile.skills, occupation)
+    skill_gap = analyze_skill_gap(profile.skills, occupation, skill_match)
 
-    # Bước 11: AI recommendation (graceful nếu thiếu key)
+    # Bước 11: AI CV Review — đầu ra TRUNG TÂM (graceful nếu thiếu key)
+    cv_review: Optional[dict] = None
     recommendation: Optional[str] = None
     if include_recommendation:
-        recommendation = generate_recommendation(
+        cv_review = generate_cv_review(
             occupation_display=occ_display,
+            occupation_profile=occupation,
             scores=scores,
             candidate_profile=profile,
             skill_gap=skill_gap,
         )
+        recommendation = cv_review_to_markdown(cv_review)  # bản markdown để lưu/hiển thị fallback
 
     result = AnalysisResult(
         occupation_key=occupation_key,
@@ -113,6 +122,7 @@ def analyze_cv(
         skill_gap=skill_gap,
         candidate_profile=profile,
         ai_recommendation=recommendation,
+        cv_review=cv_review,
     )
 
     if persist:

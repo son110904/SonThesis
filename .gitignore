@@ -17,3 +17,11 @@ models/
 
 # Design preview build output (dev tool)
 tools/preview_build/
+
+Claude.md
+
+# Bản sao lưu occupation profiles (trùng dữ liệu chính)
+data/occupation_profiles_backup/
+
+# Agent config nội bộ (không thuộc nội dung luận văn)
+.agents/

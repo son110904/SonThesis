@@ -95,6 +95,7 @@ async def analyze(
         extra_skills=d["extra_skills"],
         candidate_profile=CandidateProfileOut(**d["candidate_profile"]),
         ai_recommendation=d["ai_recommendation"],
+        cv_review=d.get("cv_review"),
     )
 
 
