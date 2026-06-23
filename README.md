@@ -1,6 +1,21 @@
+---
+title: ShibaCV
+emoji: 🐾
+colorFrom: orange
+colorTo: red
+sdk: streamlit
+sdk_version: 1.58.0
+app_file: app.py
+pinned: false
+python_version: "3.11"
+short_description: AI đánh giá độ phù hợp CV với nghề nghiệp
+---
+
 # ShibaCV — AI Career Intelligence
 
 Hệ thống đánh giá độ phù hợp CV ↔ Nghề nghiệp sử dụng mô hình embedding fine-tuned và GPT-4o.
+
+> **Deploy trên Hugging Face Spaces:** xem mục [Deploy lên Hugging Face Spaces](#deploy-lên-hugging-face-spaces) ở cuối. Frontmatter YAML phía trên là cấu hình cho Spaces (Streamlit SDK, entry `app.py`).
 
 ---
 
@@ -164,4 +179,73 @@ tin cậy cho skill ngắn — xem `calibrate_skill_threshold.py`).
 
 1. File `models/` không có trong git — xem **Mô hình embedding** bên trên.
 2. File `data/app.db` (SQLite) tự tạo khi backend khởi động lần đầu.
-3. Đảm bảo backend (`uvicorn`) đang chạy **trước** khi mở Streamlit.
+3. Đảm bảo backend (`uvicorn`) đang chạy **trước** khi mở Streamlit *(chỉ ở chế độ
+   REMOTE — xem dưới)*.
+
+---
+
+## Hai chế độ chạy frontend
+
+`src/frontend/utils/api_client.py` tự chọn chế độ theo biến môi trường `API_BASE_URL`:
+
+| Chế độ | Khi nào | Cách hoạt động |
+|--------|---------|----------------|
+| **EMBEDDED** *(mặc định)* | KHÔNG đặt `API_BASE_URL` | Streamlit gọi thẳng service layer trong **cùng tiến trình** — chỉ cần 1 process, không cần uvicorn. Dùng cho HF Spaces / `streamlit run app.py`. |
+| **REMOTE** | Đặt `API_BASE_URL=http://127.0.0.1:8000` | Gọi FastAPI qua HTTP (kiến trúc 2 service, dev local). Cần chạy `uvicorn` trước. |
+
+Chạy gọn ở local (1 lệnh, không cần backend riêng):
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## Deploy lên Hugging Face Spaces
+
+Spaces chạy `streamlit run app.py` ở chế độ EMBEDDED (không cần FastAPI riêng).
+Cấu hình Space nằm trong **YAML frontmatter đầu README** (`sdk: streamlit`,
+`app_file: app.py`).
+
+### Bước 1 — Đưa model fine-tuned lên Hub *(quan trọng để điểm không sai)*
+
+Model fine-tuned **không** có trong git. Occupation embeddings (trong các file
+`data/occupation_profiles/*.json`) được sinh bằng model fine-tuned, nên runtime
+phải dùng **cùng** model đó — nếu không cosine similarity sẽ lệch.
+
+```bash
+huggingface-cli login                       # hoặc export HF_TOKEN=hf_xxx
+python tools/push_model_to_hub.py <username>/gte-resume-match --private
+```
+
+> *Bỏ qua bước này* → hệ thống fallback về `Alibaba-NLP/gte-multilingual-base`
+> (model gốc). App vẫn chạy, **không lỗi "thiếu mô hình"**, nhưng điểm semantic
+> kém chính xác hơn (lệch không gian vector). Muốn dùng base hoàn toàn thì nên
+> chạy lại `python reembed_occupations.py` với model base để hai bên nhất quán.
+
+### Bước 2 — Tạo Space & đẩy code
+
+1. Tạo Space mới: **huggingface.co/new-space** → SDK **Streamlit**.
+2. Đẩy repo lên Space (Space là 1 git repo):
+
+   ```bash
+   git remote add space https://huggingface.co/spaces/<username>/<space-name>
+   git push space main
+   ```
+
+### Bước 3 — Đặt biến môi trường (Space → Settings → Variables and secrets)
+
+| Tên | Loại | Giá trị |
+|-----|------|---------|
+| `FINETUNED_MODEL_REPO` | Variable | `<username>/gte-resume-match` *(nếu đã đẩy model ở Bước 1)* |
+| `OPENAI_API_KEY` | **Secret** | `sk-...` *(để bật AI CV Review; thiếu vẫn chạy, chỉ trống phần khuyến nghị)* |
+
+> **KHÔNG** đặt `API_BASE_URL` trên Space — để trống cho chế độ EMBEDDED.
+
+### Lưu ý
+
+- Lần khởi động đầu tải model từ Hub (~vài trăm MB) → build/cold-start hơi lâu;
+  sau đó được cache.
+- `data/app.db` (lịch sử) là **ephemeral** trên Spaces — reset khi rebuild. Không
+  ảnh hưởng chức năng chính (chấm điểm + AI review).
+- Free tier CPU 16GB RAM đủ cho gte-multilingual-base.

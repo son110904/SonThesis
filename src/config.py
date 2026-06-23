@@ -27,6 +27,12 @@ RESUME_FIT_FILE: Path = DATA_DIR / "job_resume_fit.csv"
 # ── Mô hình embedding ───────────────────────────────────────────────────────
 EMBEDDING_MODEL_NAME: str = "Alibaba-NLP/gte-multilingual-base"
 FINE_TUNED_MODEL_DIR: Path = MODELS_DIR / "gte_multilingual_resume_match"
+# Repo trên HuggingFace Hub chứa model fine-tuned (vd "your-name/gte-resume-match").
+# Khi DEPLOY (HF Spaces) thư mục local models/ không tồn tại (đã gitignore, quá lớn
+# cho git) → nạp model từ Hub để giữ ĐÚNG không gian vector với occupation
+# embeddings (vốn sinh bằng fine-tuned). Bỏ trống → fallback model gốc.
+# Ưu tiên: local dir > Hub repo > model gốc EMBEDDING_MODEL_NAME.
+FINETUNED_MODEL_REPO: str = os.getenv("FINETUNED_MODEL_REPO", "")
 
 # ── Tham số huấn luyện ──────────────────────────────────────────────────────
 # Dataset ~2.4K dòng (≈2.1K train). Với batch=16 → ~134 step/epoch.

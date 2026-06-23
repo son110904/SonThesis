@@ -1,5 +1,7 @@
+# PyTorch — bản CPU (mặc định từ PyPI trên Linux), phù hợp HF Spaces / deploy.
+# Train trên GPU ở local: cài riêng bản CUDA, ví dụ:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
 torch>=2.0.0
-torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu121
 
 # Sentence Transformers – embedding + fine-tuning
 # Yêu cầu >= 3.0 để dùng SentenceTransformerTrainer

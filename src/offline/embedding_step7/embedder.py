@@ -29,7 +29,7 @@ import torch
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from src.config import EMBEDDING_MODEL_NAME, FINE_TUNED_MODEL_DIR
+from src.config import EMBEDDING_MODEL_NAME, FINE_TUNED_MODEL_DIR, FINETUNED_MODEL_REPO
 
 logger = logging.getLogger(__name__)
 
@@ -120,20 +120,28 @@ def load_model(use_finetuned: bool = True):
     """
     from sentence_transformers import SentenceTransformer
 
-    # Model local → local_files_only=True để bỏ round-trip kiểm tra HF hub mỗi lần
-    # load (tránh treo/chậm khi mạng chập chờn). Pretrained theo tên thì có thể cần
-    # tải lần đầu nên KHÔNG ép offline.
+    # Thứ tự ưu tiên khi use_finetuned:
+    #   1. Thư mục fine-tuned local (dev có sẵn)  → local_files_only=True (nhanh).
+    #   2. Repo fine-tuned trên HF Hub (deploy)   → tải + cache từ Hub.
+    #   3. Model gốc EMBEDDING_MODEL_NAME         → fallback cuối.
+    # (2) quan trọng cho HF Spaces: giữ ĐÚNG không gian vector với occupation
+    # embeddings đã sinh bằng fine-tuned, tránh cosine vô nghĩa.
     local_only = False
     if use_finetuned and FINE_TUNED_MODEL_DIR.exists():
         model_path = str(FINE_TUNED_MODEL_DIR)
         local_only = True
-        logger.info(f"Load fine-tuned model từ: {model_path}")
+        logger.info(f"Load fine-tuned model (local) từ: {model_path}")
+    elif use_finetuned and FINETUNED_MODEL_REPO:
+        model_path = FINETUNED_MODEL_REPO
+        logger.info(f"Load fine-tuned model từ HF Hub: {model_path}")
     else:
         model_path = EMBEDDING_MODEL_NAME
         if use_finetuned:
             logger.warning(
-                f"Fine-tuned model không tìm thấy tại {FINE_TUNED_MODEL_DIR}. "
-                f"Dùng pretrained: {EMBEDDING_MODEL_NAME}"
+                f"Không tìm thấy fine-tuned model (local {FINE_TUNED_MODEL_DIR} hay "
+                f"Hub FINETUNED_MODEL_REPO). Dùng pretrained: {EMBEDDING_MODEL_NAME}. "
+                "⚠️ Nếu occupation embeddings sinh bằng fine-tuned, điểm semantic sẽ "
+                "lệch — hãy đặt FINETUNED_MODEL_REPO hoặc regenerate embeddings."
             )
         else:
             logger.info(f"Load pretrained model: {model_path}")
