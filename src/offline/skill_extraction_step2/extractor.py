@@ -11,7 +11,6 @@ Skill lọc qua STOP_SKILLS: loại bỏ các kỹ năng quá chung (xuất hi�
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 

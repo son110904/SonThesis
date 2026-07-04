@@ -161,7 +161,26 @@ def generate_cv_review(
 
     Returns:
         dict 6 khóa (xem _normalize_review), hoặc None nếu LLM không khả dụng / lỗi.
+        Nếu CV quá sơ sài → trả review dạng cảnh báo (có cờ "_sparse"), KHÔNG gọi LLM.
     """
+    # Chặn CV quá sơ sài TRƯỚC khi tốn 1 lần gọi LLM: mentor thật sẽ yêu cầu bổ sung
+    # thông tin thay vì cố nhận xét trên hồ sơ gần như trống. (import lazy: tránh
+    # vòng import validation → llm_client → recommendation_step11.)
+    from src.online.validation.profile_completeness import (
+        assess_profile_completeness,
+        build_sparse_review,
+    )
+
+    is_sparse, missing_sections = assess_profile_completeness(candidate_profile)
+    if is_sparse:
+        logger.info(
+            "CV sơ sài (skills=%d, exp=%d, proj=%d) → trả cảnh báo, bỏ qua LLM review.",
+            len(candidate_profile.skills),
+            len(candidate_profile.experience),
+            len(candidate_profile.projects),
+        )
+        return build_sparse_review(occupation_display, missing_sections)
+
     llm = llm or get_llm_client()
     if not llm.is_available():
         logger.warning("LLM không khả dụng → bỏ qua AI CV Review.")

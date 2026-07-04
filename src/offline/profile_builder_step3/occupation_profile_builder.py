@@ -20,7 +20,6 @@ Output mỗi occupation:
 import logging
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -38,13 +37,18 @@ def _normalize_occupation_key(name: str) -> str:
     return name.strip().lower().replace(" ", "_")
 
 
-def build_occupation_profiles(extracted_records: list[dict]) -> dict[str, dict]:
+def build_occupation_profiles(
+    extracted_records: list[dict],
+    use_llm: bool = True,
+) -> dict[str, dict]:
     """
     Xây dựng Occupation Profile từ danh sách kết quả trích xuất.
 
     Args:
         extracted_records: List[dict] từ extractor.extract_all()
                            Keys: occupation, skills, responsibilities.
+        use_llm:           Có dùng LLM tóm tắt responsibilities không (cần OPENAI_API_KEY).
+                           Nếu False hoặc không có key → dùng raw dedup list.
 
     Returns:
         Dict[occupation_key → profile_dict]
@@ -109,7 +113,18 @@ def build_occupation_profiles(extracted_records: list[dict]) -> dict[str, dict]:
 
         # Responsibilities: sắp xếp theo thứ tự xuất hiện, lấy text gốc
         resp_ordered = sorted(resp_pool[occ_key].values(), key=lambda x: x[0])
-        responsibilities = [text for _, text in resp_ordered[:MAX_RESPONSIBILITIES]]
+        raw_responsibilities = [text for _, text in resp_ordered[:MAX_RESPONSIBILITIES]]
+
+        # Tóm tắt bằng LLM (nếu bật); fallback về raw list khi thiếu key hoặc lỗi
+        responsibilities = raw_responsibilities
+        if use_llm:
+            from src.offline.profile_builder_step3.resp_summarizer import summarize_responsibilities
+            summarized = summarize_responsibilities(
+                occupation=occupation_display[occ_key],
+                raw_responsibilities=raw_responsibilities,
+            )
+            if summarized is not None:
+                responsibilities = summarized
 
         profiles[occ_key] = {
             "occupation": occupation_display[occ_key],
@@ -127,26 +142,6 @@ def build_occupation_profiles(extracted_records: list[dict]) -> dict[str, dict]:
         f"(avg {total_skills_avg:.1f} skills/occupation)"
     )
     return profiles
-
-
-def build_from_dataframe(
-    df_clean: pd.DataFrame,
-    extracted_records: Optional[list[dict]] = None,
-) -> dict[str, dict]:
-    """
-    Pipeline hoàn chỉnh: DataFrame đã làm sạch → Occupation Profiles.
-
-    Args:
-        df_clean: DataFrame JD sau clean_jd_dataframe.
-        extracted_records: Kết quả extractor nếu đã có (để tránh chạy lại).
-
-    Returns:
-        Dict occupation profiles.
-    """
-    if extracted_records is None:
-        from src.offline.skill_extraction_step2.extractor import extract_all
-        extracted_records = extract_all(df_clean)
-    return build_occupation_profiles(extracted_records)
 
 
 def profiles_to_dataframe(profiles: dict[str, dict]) -> pd.DataFrame:

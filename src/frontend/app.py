@@ -14,10 +14,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
-from src.frontend.utils import APIError, health, inject_css, render_header
+from src.frontend.utils import (
+    APIError,
+    get_health,
+    inject_css,
+    render_header,
+    start_background_warmup,
+)
 from src.frontend.pages import (
     render_home,
     render_landing,
+    render_recommend_page,
     render_result,
     render_scanning_page,
 )
@@ -32,11 +39,16 @@ def main() -> None:
     )
     inject_css()
 
+    # Nạp model + KB ở luồng nền NGAY khi app khởi động (không chặn UI). Tới lúc
+    # người dùng bấm "Phân tích" thì model thường đã sẵn sàng → không khựng.
+    start_background_warmup()
+
     st.session_state.setdefault("view", "landing")
 
     try:
-        status = health()
-        if not status.get("llm_available"):
+        status = get_health()
+        # Banner kỹ thuật chỉ hiện ở trang làm việc — không đè lên landing.
+        if not status.get("llm_available") and st.session_state["view"] not in ("landing", "scanning"):
             st.info(
                 "Backend đang chạy nhưng **chưa cấu hình OPENAI_API_KEY** — điểm số "
                 "vẫn tính đầy đủ, riêng phần khuyến nghị AI sẽ trống.",
@@ -51,6 +63,9 @@ def main() -> None:
     if view == "result":
         render_header()
         render_result()
+    elif view == "recommend":
+        render_header()
+        render_recommend_page()
     elif view == "scanning":
         render_scanning_page()
     elif view == "home":

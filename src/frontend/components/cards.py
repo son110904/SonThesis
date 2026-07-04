@@ -7,7 +7,7 @@ from __future__ import annotations
 import html
 import re
 
-from src.frontend.utils.styling import COLORS, score_color
+from src.frontend.utils.styling import score_color
 
 
 def _simple_md(text: str) -> str:
@@ -91,7 +91,7 @@ def render_recommendation_card(markdown_text: str | None) -> None:
         st.markdown(
             """<div class="ai-rec-wrap">
               <p style="color:var(--muted);font-size:.9rem">
-                Chưa có khuyến nghị. Cần <code>OPENAI_API_KEY</code> để bật GPT-4o.
+                chưa có khuyến nghị
               </p>
             </div>""",
             unsafe_allow_html=True,
@@ -125,6 +125,22 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
 
     if not review:
         render_recommendation_card(fallback_markdown)
+        return
+
+    # CV quá sơ sài: hiển thị cảnh báo riêng (mentor yêu cầu bổ sung), KHÔNG render
+    # các khối nhận xét rỗng (strengths/missing/roadmap) cho gọn và đúng ý nghĩa.
+    if review.get("_sparse"):
+        overall = html.escape(review.get("overall_assessment", ""))
+        tips = "".join(f"<li>{html.escape(str(t))}</li>" for t in review.get("recommendations", []))
+        tips_html = f'<div class="rv-warn-title">Cần bổ sung:</div><ul class="rv-list">{tips}</ul>' if tips else ""
+        st.markdown(
+            f'<div class="rv-warn">'
+            f'<div class="rv-warn-label">⚠️ CV chưa đủ thông tin để đánh giá</div>'
+            f'<div class="rv-warn-body">{overall}</div>'
+            f'{tips_html}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     # 1. Overall assessment — phần nổi bật nhất

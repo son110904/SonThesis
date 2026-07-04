@@ -1,7 +1,5 @@
 import logging
-import math
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from sentence_transformers import InputExample

@@ -1,15 +1,9 @@
-"""
-config.py – Quản lý tập trung toàn bộ tham số hệ thống.
-"""
-
 import os
 from pathlib import Path
 
 # ── Đường dẫn gốc ──────────────────────────────────────────────────────────
 ROOT_DIR: Path = Path(__file__).resolve().parent.parent
 
-# Tự nạp biến môi trường từ .env (OPENAI_API_KEY, …) nếu file tồn tại.
-# Không ghi đè biến đã set sẵn trong shell (override=False).
 try:
     from dotenv import load_dotenv
 
@@ -95,16 +89,11 @@ RESUME_TEXT_COL: str = "resume_text"
 JOB_TEXT_COL: str = "job_text"
 MATCH_SCORE_COL: str = "ai_match_score"
 
-# ══════════════════════════════════════════════════════════════════════════
-# ONLINE PIPELINE
-# ══════════════════════════════════════════════════════════════════════════
+
 
 # ── Final Score: match_score = MATCH_ALPHA*semantic + MATCH_BETA*weighted ──
-# (khác ALPHA/BETA ở trên — kia là trọng số frequency vs tf-idf của skill weight)
-# 0.5/0.5 là điểm khởi đầu trung lập; giá trị "tốt nhất" nên chọn từ ablation
-# (scripts/ablation.py quét grid α+β=1 và đo tương quan với ai_match_score).
-MATCH_ALPHA: float = 0.5    # trọng số semantic similarity
-MATCH_BETA: float = 0.5     # trọng số weighted skill score
+MATCH_ALPHA: float = 0.7    # trọng số semantic similarity
+MATCH_BETA: float = 0.3     # trọng số weighted skill score
 
 # ── Skill matching (Bước 8 & 10) ────────────────────────────────────────────
 # "exact" (MẶC ĐỊNH): khớp chuỗi sau canonicalize + SYNONYM_MAP song ngữ →
@@ -127,6 +116,12 @@ LLM_MAX_RETRIES: int = 2
 
 # ── Text extraction giới hạn ────────────────────────────────────────────────
 MAX_CV_CHARS: int = 20000   # cắt CV quá dài trước khi xử lý
+
+# ── Ngưỡng "CV quá sơ sài" (chặn trước khi gọi LLM sinh AI Review) ───────────
+# CV bị coi là sơ sài nếu: trích được ÍT HƠN MIN_PROFILE_SKILLS kỹ năng, HOẶC
+# thiếu HOÀN TOÀN cả kinh nghiệm lẫn dự án. Khi đó hệ thống trả về cảnh báo cụ
+# thể thay vì để LLM sinh nhận xét thiếu căn cứ (xem validation.profile_completeness).
+MIN_PROFILE_SKILLS: int = 3
 
 # ── Database (SQLite) ───────────────────────────────────────────────────────
 DB_PATH: Path = ROOT_DIR / "data" / "app.db"

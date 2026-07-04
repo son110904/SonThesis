@@ -22,7 +22,6 @@ Output:
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
@@ -349,31 +348,3 @@ if __name__ == "__main__":
     results = find_most_similar_occupation(occ_embeddings[it_key], occ_embeddings)
     for occ, score in results:
         print(f"  {occ:<55} {score:.4f}")
-
-
-def embed_with_mock(
-    enriched_profiles: dict[str, dict],
-    dim: int = 768,
-) -> dict[str, list[float]]:
-    """
-    Mock embedding dùng để test pipeline khi không có model (offline/CI).
-
-    Tạo vector ngẫu nhiên L2-normalized cho mỗi occupation.
-    KHÔNG dùng trong production.
-
-    Args:
-        enriched_profiles: Output weight_result_to_profile_format().
-        dim: Embedding dimension (768 cho gte-multilingual-base).
-
-    Returns:
-        Dict[occupation_key → List[float]] (random normalized vectors).
-    """
-    import numpy as np
-    logger.warning("Dùng mock embedding — chỉ dùng để test pipeline, không dùng production!")
-    rng = np.random.default_rng(seed=42)
-    result: dict[str, list[float]] = {}
-    for occ_key in enriched_profiles:
-        vec = rng.standard_normal(dim).astype(np.float32)
-        vec /= np.linalg.norm(vec)
-        result[occ_key] = vec.tolist()
-    return result

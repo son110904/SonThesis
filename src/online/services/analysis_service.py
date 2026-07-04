@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from src.models import AnalysisResult
+from src.models import AnalysisResult, CandidateProfile
 from src.online.extraction_step2 import extract_text_from_bytes
 from src.online.candidate_profile_step4 import build_candidate_profile
 from src.online.embedding_step5 import embed_candidate
@@ -31,6 +31,7 @@ from src.online.scoring_step9 import compute_final_score
 from src.online.skill_gap_step10 import analyze_skill_gap
 from src.online.recommendation_step11 import generate_cv_review, cv_review_to_markdown
 from src.online.services.occupation_loader import get_occupation
+from src.online.validation import NotACVError, is_cv
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +69,6 @@ def analyze_cv(
 
     # Bước 6: occupation (validate sớm trước khi tốn công xử lý CV)
     occupation = get_occupation(occupation_key)
-    occ_display = occupation["_display"]
-    occ_embedding = occupation.get("embedding", [])
 
     # Bước 2: text extraction
     raw_text = extract_text_from_bytes(file_bytes, filename)
@@ -79,16 +78,47 @@ def analyze_cv(
             "Hãy thử file PDF có text hoặc DOCX."
         )
 
+    # Kiểm tra: tài liệu có phải CV không. Không phải → dừng, KHÔNG chạy tiếp.
+    ok, reason = is_cv(raw_text)
+    if not ok:
+        raise NotACVError(
+            "Tài liệu được tải lên không phải là CV hoặc Resume. "
+            "Vui lòng tải lên CV hợp lệ."
+        )
+
     # Bước 3-4: candidate profile (regex skills + LLM sections)
     profile = build_candidate_profile(raw_text)
 
     # Bước 5: candidate embedding
     candidate_embedding = embed_candidate(profile)
 
+    # Bước 6-11: chấm điểm + AI review cho nghề này
+    result = _analyze_one(profile, candidate_embedding, occupation, include_recommendation)
+
+    if persist:
+        _save_history(filename, result)
+    return result
+
+
+def _analyze_one(
+    profile: CandidateProfile,
+    candidate_embedding: list[float],
+    occupation: dict,
+    include_recommendation: bool = True,
+) -> AnalysisResult:
+    """
+    Chấm điểm 1 nghề (Bước 6-11) từ candidate profile + embedding ĐÃ tính sẵn.
+
+    Tách riêng để dùng lại: (1) analyze_cv chấm 1 nghề, (2) review_occupation chấm
+    nghề người dùng chọn từ Top 3, (3) recommend_occupations gọi phần 6-10 (bỏ 11).
+    """
+    occ_display = occupation["_display"]
+    occ_embedding = occupation.get("embedding", [])
+
     # Bước 7: semantic matching
     semantic_score = compute_semantic_score(candidate_embedding, occ_embedding)
 
-    # Skill matching dùng chung cho Bước 8 & 10 (embed skill 1 lần, theo config mode).
+    # Skill matching dùng chung cho Bước 8 & 10 (theo config mode).
     occ_skills = list({**occupation.get("optional_skills", {}),
                        **occupation.get("core_skills", {})}.keys())
     skill_match = match_skills(profile.skills, occ_skills)
@@ -113,10 +143,14 @@ def analyze_cv(
             candidate_profile=profile,
             skill_gap=skill_gap,
         )
-        recommendation = cv_review_to_markdown(cv_review)  # bản markdown để lưu/hiển thị fallback
+        recommendation = cv_review_to_markdown(cv_review)
 
-    result = AnalysisResult(
-        occupation_key=occupation_key,
+    logger.info(
+        f"=== Hoàn tất '{occupation['_key']}': match_score={scores.match_score:.2%} "
+        f"(semantic={semantic_score:.2%}, weighted={weighted_score:.2%}) ==="
+    )
+    return AnalysisResult(
+        occupation_key=occupation["_key"],
         occupation_display=occ_display,
         scores=scores,
         skill_gap=skill_gap,
@@ -125,13 +159,35 @@ def analyze_cv(
         cv_review=cv_review,
     )
 
-    if persist:
-        _save_history(filename, result)
 
-    logger.info(
-        f"=== Hoàn tất: match_score={scores.match_score:.2%} "
-        f"(semantic={semantic_score:.2%}, weighted={weighted_score:.2%}) ==="
+def review_occupation(
+    candidate_profile: dict,
+    candidate_embedding: list[float],
+    occupation_key: str,
+    include_recommendation: bool = True,
+    persist: bool = True,
+) -> AnalysisResult:
+    """
+    Sinh AI CV Review cho 1 nghề người dùng chọn, TÁI DÙNG candidate profile +
+    embedding đã tính ở bước recommend → KHÔNG re-extract / re-embed / gọi lại LLM
+    trích profile. Chỉ tốn 1 lần LLM cho AI Review.
+
+    Args:
+        candidate_profile:   dict (từ recommend_occupations → profile.to_dict() + raw_text).
+        candidate_embedding: vector 768 chiều đã tính.
+        occupation_key:      nghề người dùng chọn.
+    """
+    occupation = get_occupation(occupation_key)
+    profile = CandidateProfile(
+        skills=candidate_profile.get("skills", []),
+        experience=candidate_profile.get("experience", []),
+        projects=candidate_profile.get("projects", []),
+        education=candidate_profile.get("education", []),
+        raw_text=candidate_profile.get("raw_text", ""),
     )
+    result = _analyze_one(profile, candidate_embedding, occupation, include_recommendation)
+    if persist:
+        _save_history(candidate_profile.get("filename", "cv"), result)
     return result
 
 

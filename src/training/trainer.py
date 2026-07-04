@@ -257,41 +257,6 @@ def train(
     return best_model
 
 
-def load_finetuned_model(
-    model_dir: Path = FINE_TUNED_MODEL_DIR,
-) -> SentenceTransformer:
-    """
-    Load fine-tuned model đã lưu bằng save_pretrained().
-
-    Args:
-        model_dir: Thư mục chứa config.json và weights.
-
-    Returns:
-        SentenceTransformer instance.
-
-    Raises:
-        FileNotFoundError: Nếu chưa có fine-tuned model.
-    """
-    if not model_dir.exists():
-        raise FileNotFoundError(
-            f"Fine-tuned model không tìm thấy tại: {model_dir}\n"
-            f"Hãy chạy trainer.py trước để huấn luyện model."
-        )
-    logger.info(f"Load fine-tuned model từ: {model_dir}")
-    model = SentenceTransformer(str(model_dir), trust_remote_code=True)
-    try:
-        emb = model._first_module().auto_model.embeddings
-        if hasattr(emb, "position_ids"):
-            emb.register_buffer(
-                "position_ids",
-                torch.arange(emb.position_ids.size(0)),
-                persistent=False,
-            )
-    except Exception:
-        pass
-    return model
-
-
 # ── CLI entry point ───────────────────────────────────────────────────────────
 if __name__ == "__main__":
     logging.basicConfig(

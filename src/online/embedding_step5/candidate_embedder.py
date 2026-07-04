@@ -12,7 +12,7 @@ occupation embeddings cũng sinh bằng load_model, hai bên vẫn nhất quán.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import threading
 
 import numpy as np
 
@@ -26,16 +26,21 @@ _MAX_SKILLS = 30
 _MAX_EXP = 5
 _MAX_PROJ = 5
 
-# Model dùng chung toàn ứng dụng (load 1 lần)
+# Model dùng chung toàn ứng dụng (load 1 lần). Lock để an toàn khi vừa prewarm ở
+# luồng nền vừa có request phân tích → chỉ load đúng 1 lần, không nạp đôi.
 _shared_model = None
+_model_lock = threading.Lock()
 
 
 def get_shared_model(use_finetuned: bool = True):
-    """Lấy SentenceTransformer dùng chung (load 1 lần, lazy)."""
+    """Lấy SentenceTransformer dùng chung (load 1 lần, lazy, thread-safe)."""
     global _shared_model
-    if _shared_model is None:
-        logger.info("Đang load embedding model (lần đầu)...")
-        _shared_model = load_model(use_finetuned=use_finetuned)
+    if _shared_model is not None:
+        return _shared_model
+    with _model_lock:
+        if _shared_model is None:  # double-checked locking
+            logger.info("Đang load embedding model (lần đầu)...")
+            _shared_model = load_model(use_finetuned=use_finetuned)
     return _shared_model
 
 
