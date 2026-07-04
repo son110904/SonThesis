@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from src.config import SKILL_TIER_IMPORTANT
 from src.online.semantic_skill_match import SkillMatchResult, match_skills
 
 logger = logging.getLogger(__name__)
@@ -61,9 +62,15 @@ def compute_weighted_skill_score(
     if match_result is None:
         match_result = match_skills(candidate_skills, list(occ_weights.keys()))
 
-    total_weight = sum(occ_weights.values())
+    # Mẫu số CHỈ tính Core + Important (w >= SKILL_TIER_IMPORTANT); bỏ tầng Supporting
+    # Tránh nén điểm xuống thấp giả tạo + nhất quán với missing_skills (cùng ngưỡng).
+    scored_weights = {s: w for s, w in occ_weights.items() if w >= SKILL_TIER_IMPORTANT}
+    if not scored_weights:  # nghề toàn skill yếu → fallback dùng toàn bộ để không chia 0
+        scored_weights = occ_weights
+
+    total_weight = sum(scored_weights.values())
     matched_weight = sum(
-        occ_weights[skill] for skill in match_result.matched if skill in occ_weights
+        scored_weights[skill] for skill in match_result.matched if skill in scored_weights
     )
 
     score = matched_weight / total_weight if total_weight > 0 else 0.0
@@ -71,6 +78,7 @@ def compute_weighted_skill_score(
     logger.debug(
         f"weighted_skill_score={score:.4f} "
         f"(matched_weight={matched_weight:.2f}/{total_weight:.2f}, "
+        f"skills_scored={len(scored_weights)}/{len(occ_weights)}, "
         f"mode={match_result.mode_used})"
     )
     return score

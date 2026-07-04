@@ -27,7 +27,6 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -156,6 +155,7 @@ def build_from_scratch(
     output_dir: Path = OCCUPATION_PROFILES_DIR,
     use_finetuned: bool = True,
     overwrite: bool = True,
+    use_llm: bool = True,
 ) -> dict[str, Path]:
     """
     Chạy toàn bộ offline pipeline Bước 1-7 rồi lưu Knowledge Base.
@@ -179,9 +179,9 @@ def build_from_scratch(
     from src.offline.skill_extraction_step2.extractor import extract_all
     records = extract_all(df_clean)
 
-    # Bước 3: Build profiles
+    # Bước 3: Build profiles (có LLM tóm tắt responsibilities nếu use_llm=True)
     from src.offline.profile_builder_step3.occupation_profile_builder import build_occupation_profiles
-    profiles = build_occupation_profiles(records)
+    profiles = build_occupation_profiles(records, use_llm=use_llm)
 
     # Bước 4: Frequency
     from src.offline.frequency_analysis_step4.frequency_analyzer import compute_frequency
@@ -241,20 +241,6 @@ def load_knowledge_base(
     return kb
 
 
-def get_all_embeddings(kb: dict[str, dict]) -> dict[str, list[float]]:
-    """
-    Trích xuất tất cả embedding vectors từ Knowledge Base đã load.
-
-    Returns:
-        Dict[occupation_key → embedding vector]
-    """
-    return {
-        occ_key: entry["embedding"]
-        for occ_key, entry in kb.items()
-        if "embedding" in entry
-    }
-
-
 def summarize_knowledge_base(kb: dict[str, dict]) -> None:
     """In tóm tắt Knowledge Base."""
     print(f"\n{'='*65}")
@@ -304,6 +290,7 @@ if __name__ == "__main__":
         output_dir=Path(args.output_dir),
         use_finetuned=args.use_finetuned,
         overwrite=args.overwrite,
+        use_llm=True,
     )
 
     # Load lại và hiển thị tóm tắt

@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src.config import (
     JD_FILE,
     RESUME_FIT_FILE,
-    JD_TEXT_COLS,
     JD_CATEGORY_COL,
     JD_TITLE_COL,
     RESUME_TEXT_COL,

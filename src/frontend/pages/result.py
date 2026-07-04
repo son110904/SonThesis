@@ -41,6 +41,7 @@ def render_result() -> None:
     with hdr_l:
         st.markdown(
             f"""
+            <div class="eyebrow">Bước 4 · Báo cáo chi tiết</div>
             <div class="results-title">Kết quả phân tích</div>
             <div class="results-sub">
               Vị trí ứng tuyển: <strong style="color:var(--accent)">{html.escape(result['occupation_display'])}</strong>
@@ -50,7 +51,14 @@ def render_result() -> None:
             unsafe_allow_html=True,
         )
     with hdr_r:
+        # Nếu đến từ luồng gợi ý (có Top 3) → cho quay lại danh sách Top 3.
+        if st.session_state.get("recommendations"):
+            if st.button("← Quay lại Top 3", use_container_width=True):
+                st.session_state["view"] = "recommend"
+                st.rerun()
         if st.button("← Phân tích CV khác", use_container_width=True):
+            for k in ("recommendations", "candidate_profile", "candidate_embedding", "result"):
+                st.session_state.pop(k, None)
             st.session_state["view"] = "home"
             st.rerun()
 
@@ -63,7 +71,7 @@ def render_result() -> None:
         st.markdown(
             f"""<div style="text-align:center;margin-top:0.5rem;display:flex;flex-direction:column;align-items:center">
               <div class="score-verdict">{verdict_label}</div>
-              <div class="score-desc" style="margin-top:0.8rem;padding:1rem;border:1.5px solid var(--accent);border-radius:8px;background-color:rgba(255,255,255,0.02);text-align:center;max-width:280px">{verdict_desc}</div>
+              <div class="score-desc" style="margin-top:0.8rem;padding:1rem 1.2rem;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--surface),var(--surface-warm));box-shadow:var(--shadow-card),var(--inset-hi);text-align:center;max-width:300px">{verdict_desc}</div>
             </div>""",
             unsafe_allow_html=True,
         )

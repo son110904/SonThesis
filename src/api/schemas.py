@@ -55,6 +55,33 @@ class AnalyzeResponse(BaseModel):
     cv_review: Optional[dict] = None
 
 
+class RecommendationItem(BaseModel):
+    """1 nghề trong Top-K gợi ý."""
+
+    occupation_key: str
+    occupation_display: str
+    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+
+
+class RecommendationResponse(BaseModel):
+    """Kết quả endpoint POST /recommend."""
+
+    recommendations: list[RecommendationItem]
+    candidate_profile: dict          # skills/experience/projects/education/raw_text/filename
+    candidate_embedding: list[float]  # tái dùng cho /review
+
+
+class ReviewRequest(BaseModel):
+    """Body endpoint POST /review (chọn 1 nghề từ Top-K, tái dùng profile + embedding)."""
+
+    candidate_profile: dict
+    candidate_embedding: list[float]
+    occupation: str
+    include_recommendation: bool = True
+
+
 class HistoryItem(BaseModel):
     id: int
     created_at: str
@@ -72,7 +99,3 @@ class HistoryItem(BaseModel):
 
 class HistoryListResponse(BaseModel):
     items: list[HistoryItem]
-
-
-class ErrorResponse(BaseModel):
-    detail: str

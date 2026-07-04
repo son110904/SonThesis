@@ -300,25 +300,6 @@ def dedupe_weighted_skills(
     return dict(sorted(merged.items(), key=lambda kv: kv[1], reverse=True))
 
 
-def dedupe_skill_list(
-    skills: Iterable[str],
-    display_preference: Optional[Mapping[str, str]] = None,
-) -> list[str]:
-    """Chuẩn hóa + loại trùng cho 1 list skill (giữ thứ tự xuất hiện đầu tiên)."""
-    if display_preference is None:
-        display_preference = build_display_preference([list(skills)])
-    out: list[str] = []
-    seen: set[str] = set()
-    for raw in skills:
-        canon = canonicalize_skill(raw)
-        low = canon.lower()
-        display = display_preference.get(low, canon)
-        if low not in seen:
-            seen.add(low)
-            out.append(display)
-    return out
-
-
 # ── CLI test ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     samples = [

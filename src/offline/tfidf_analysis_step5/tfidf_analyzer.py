@@ -69,21 +69,6 @@ def _compute_document_frequency(profiles: dict[str, dict]) -> dict[str, int]:
     return dict(df)
 
 
-def _build_skill_lower_map(profiles: dict[str, dict]) -> dict[str, str]:
-    """
-    Xây dựng map từ skill_lower → canonical form (form xuất hiện nhiều nhất).
-
-    Dùng để đồng bộ key khi tính IDF xuyên occupation.
-    """
-    canonical: dict[str, str] = {}
-    for profile in profiles.values():
-        for skill in profile["skill_counts"].keys():
-            lower = skill.lower()
-            if lower not in canonical:
-                canonical[lower] = skill
-    return canonical
-
-
 def compute_tfidf(
     profiles: dict[str, dict],
     freq_result: dict[str, dict[str, dict]],

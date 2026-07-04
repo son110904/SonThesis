@@ -10,8 +10,8 @@ Hai chế độ, chọn tự động theo biến môi trường API_BASE_URL:
   • REMOTE (khi đặt API_BASE_URL, vd http://127.0.0.1:8000):
         Gọi REST API qua HTTP tới FastAPI backend (kiến trúc 2 service, dev local).
 
-Cùng một bộ hàm (health/get_occupations/analyze_cv/get_history) cho cả hai chế độ
-→ phần UI không cần biết đang chạy ở đâu.
+Cùng một bộ hàm (health/get_occupations/analyze_cv/recommend/review) cho cả hai
+chế độ → phần UI không cần biết đang chạy ở đâu.
 """
 
 from __future__ import annotations
@@ -86,18 +86,30 @@ def _http_analyze_cv(file_bytes, filename, occupation_key, include_recommendatio
     return _handle_response(resp)
 
 
-def _http_get_history(limit, occupation) -> list[dict]:
+def _http_recommend(file_bytes, filename, top_k) -> dict:
     import requests
-    params: dict = {"limit": limit}
-    if occupation:
-        params["occupation"] = occupation
+    files = {"file": (filename, file_bytes)}
+    form = {"top_k": str(top_k)}
     try:
-        data = _handle_response(
-            requests.get(_url("/history"), params=params, timeout=_TIMEOUT)
-        )
+        resp = requests.post(_url("/recommend"), files=files, data=form, timeout=_TIMEOUT)
     except requests.RequestException as e:
-        raise APIError(f"Không lấy được lịch sử: {e}")
-    return data.get("items", [])
+        raise APIError(f"Lỗi gọi /recommend: {e}")
+    return _handle_response(resp)
+
+
+def _http_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation) -> dict:
+    import requests
+    payload = {
+        "candidate_profile": candidate_profile,
+        "candidate_embedding": candidate_embedding,
+        "occupation": occupation_key,
+        "include_recommendation": include_recommendation,
+    }
+    try:
+        resp = requests.post(_url("/review"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /review: {e}")
+    return _handle_response(resp)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -150,30 +162,43 @@ def _embedded_analyze_cv(file_bytes, filename, occupation_key, include_recommend
     return result.to_dict()
 
 
-def _embedded_get_history(limit, occupation) -> list[dict]:
+def _embedded_recommend(file_bytes, filename, top_k) -> dict:
+    if not file_bytes:
+        raise APIError("File rỗng.")
+    if len(file_bytes) > _MAX_FILE_BYTES:
+        raise APIError("File quá lớn (tối đa 10MB).")
+
+    from src.online.services import recommend_occupations as _svc_recommend
+    from src.online.services.analysis_service import EmptyCVError
+    from src.online.extraction_step2.text_extractor import UnsupportedFileType
+    from src.online.validation import NotACVError
+
     try:
-        from src.database import list_evaluations
-        rows = list_evaluations(limit=limit, occupation_key=occupation)
+        return _svc_recommend(file_bytes=file_bytes, filename=filename or "cv", top_k=top_k)
+    except (NotACVError, UnsupportedFileType, EmptyCVError) as e:
+        raise APIError(str(e))
     except Exception as e:  # noqa: BLE001
-        raise APIError(f"Không lấy được lịch sử (embedded): {e}")
-    return [
-        {
-            "id": r["id"],
-            "created_at": r.get("created_at", ""),
-            "cv_filename": r.get("cv_filename"),
-            "occupation_key": r["occupation_key"],
-            "occupation_display": r.get("occupation_display"),
-            "match_score": r.get("match_score"),
-            "semantic_similarity_score": r.get("semantic_similarity_score"),
-            "weighted_skill_score": r.get("weighted_skill_score"),
-            "matched_skills": r.get("matched_skills") or [],
-            "missing_skills": r.get("missing_skills") or [],
-            "candidate_profile": r.get("candidate_profile")
-            if isinstance(r.get("candidate_profile"), dict) else None,
-            "ai_recommendation": r.get("ai_recommendation"),
-        }
-        for r in rows
-    ]
+        logger.exception("Lỗi khi gợi ý nghề (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation) -> dict:
+    from src.online.services import review_occupation as _svc_review
+    from src.online.services.occupation_loader import OccupationNotFound
+
+    try:
+        result = _svc_review(
+            candidate_profile=candidate_profile,
+            candidate_embedding=candidate_embedding,
+            occupation_key=occupation_key,
+            include_recommendation=include_recommendation,
+        )
+    except OccupationNotFound as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi review nghề đã chọn (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+    return result.to_dict()
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -201,6 +226,20 @@ def analyze_cv(
     return _embedded_analyze_cv(file_bytes, filename, occupation_key, include_recommendation)
 
 
-def get_history(limit: int = 20, occupation: Optional[str] = None) -> list[dict]:
-    """Lịch sử đánh giá."""
-    return _http_get_history(limit, occupation) if _REMOTE else _embedded_get_history(limit, occupation)
+def recommend_occupations(file_bytes: bytes, filename: str, top_k: int = 3) -> dict:
+    """Gợi ý Top-K nghề phù hợp nhất với CV (Career Recommendation)."""
+    if _REMOTE:
+        return _http_recommend(file_bytes, filename, top_k)
+    return _embedded_recommend(file_bytes, filename, top_k)
+
+
+def review_occupation(
+    candidate_profile: dict,
+    candidate_embedding: list,
+    occupation_key: str,
+    include_recommendation: bool = True,
+) -> dict:
+    """Sinh AI CV Review cho 1 nghề đã chọn (tái dùng profile + embedding)."""
+    if _REMOTE:
+        return _http_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)
+    return _embedded_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)

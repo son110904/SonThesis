@@ -14,7 +14,6 @@ kết hợp thêm custom metrics.
 import logging
 import math
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from sentence_transformers import InputExample, SentenceTransformer
