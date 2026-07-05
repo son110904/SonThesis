@@ -123,9 +123,6 @@ MAX_CV_CHARS: int = 20000   # cắt CV quá dài trước khi xử lý
 # thể thay vì để LLM sinh nhận xét thiếu căn cứ (xem validation.profile_completeness).
 MIN_PROFILE_SKILLS: int = 3
 
-# ── Database (SQLite) ───────────────────────────────────────────────────────
-DB_PATH: Path = ROOT_DIR / "data" / "app.db"
-
 # ── API ─────────────────────────────────────────────────────────────────────
 API_HOST: str = os.getenv("API_HOST", "127.0.0.1")
 API_PORT: int = int(os.getenv("API_PORT", "8000"))

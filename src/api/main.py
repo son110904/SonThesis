@@ -32,16 +32,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Khởi tạo DB + seed occupations khi app start."""
-    from src.database import init_db, seed_occupations
-    from src.online.services import list_occupations
-
+    """Prewarm embedding model khi app start."""
     logger.info("Khởi động backend Online Pipeline...")
-    init_db()
-    try:
-        seed_occupations(list_occupations())
-    except Exception as e:  # noqa: BLE001
-        logger.error(f"Không seed được occupations: {e}")
 
     # Prewarm embedding model ở thread nền: load model tốn ~6s (lần đầu/disk lạnh có
     # thể tới ~1 phút). Nếu để lazy thì USER ĐẦU TIÊN phải gánh toàn bộ độ trễ này.

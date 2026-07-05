@@ -45,7 +45,14 @@ _SYSTEM_PROMPT = (
     "xây dựng từ toàn bộ hồ sơ, occupation profile, matched/missing skills.\n"
     "4. Nếu CV thiếu thông tin để đánh giá một mục, hãy NÓI RÕ là chưa thể hiện, thay "
     "vì suy diễn.\n"
-    "5. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
+    "5. Danh sách 'Còn thiếu (missing)' được tính bằng SO KHỚP CHUỖI CHÍNH XÁC nên có "
+    "thể SAI (false-negative). Hãy dùng KIẾN THỨC CHUYÊN MÔN của bạn để tự chỉnh: nếu "
+    "ứng viên rõ ràng đã có một kỹ năng yêu cầu THÔNG QUA công cụ/framework/kỹ năng "
+    "tương đương (vd: có FastAPI/Flask/Spring ⟹ đã biết REST API; có Figma/Photoshop "
+    "⟹ đã biết thiết kế UI; có Google Ads ⟹ đã biết digital marketing), thì COI LÀ ĐÃ "
+    "ĐÁP ỨNG, KHÔNG liệt kê vào phần thiếu và KHÔNG khuyên 'đi học' kỹ năng đó. Chỉ nêu "
+    "kỹ năng THỰC SỰ vắng mặt. Nguyên tắc này áp dụng cho MỌI ngành nghề.\n"
+    "6. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
 )
 
 # Schema mô tả trong prompt để LLM trả JSON đúng cấu trúc.
@@ -79,9 +86,9 @@ _USER_TEMPLATE = """Hãy review CV của ứng viên cho vị trí "{occupation}
 {cand_proj}
 - Học vấn: {cand_edu}
 
-## Đối chiếu kỹ năng (hỗ trợ giải thích)
+## Đối chiếu kỹ năng (GỢI Ý THÔ từ so khớp chuỗi — có thể sai, tự chỉnh theo ràng buộc 5)
 - Đã đáp ứng (matched): {matched}
-- Còn thiếu (missing, ưu tiên cao trước): {missing}
+- Nghi còn thiếu (missing, ưu tiên cao trước — LOẠI BỎ mục nào ứng viên đã có qua kỹ năng tương đương): {missing}
 
 {schema}
 
