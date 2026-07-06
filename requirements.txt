@@ -1,0 +1,43 @@
+# PyTorch — bản CPU (mặc định từ PyPI trên Linux), phù hợp HF Spaces / deploy.
+# Train trên GPU ở local: cài riêng bản CUDA, ví dụ:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch>=2.0.0
+
+# Sentence Transformers – embedding + fine-tuning
+# Yêu cầu >= 3.0 để dùng SentenceTransformerTrainer
+sentence-transformers>=3.0.0
+
+# HuggingFace ecosystem
+transformers>=4.36.0
+huggingface-hub>=0.20.0
+datasets>=2.14.0          # dùng trong trainer.py (HF Dataset format)
+
+# ── Data processing ──────────────────────────────────────────
+numpy>=1.24.0
+pandas>=1.5.0
+scipy>=1.10.0             # dùng trong evaluator.py (spearmanr)
+scikit-learn>=1.3.0       # dùng trong sentence-transformers nội bộ
+
+# ── Utilities ────────────────────────────────────────────────
+tqdm>=4.65.0              # progress bar khi encode
+safetensors>=0.4.0        # lưu/load model weights nhanh hơn
+tokenizers>=0.15.0        # HuggingFace fast tokenizer
+
+# ── Online Pipeline: Backend API ─────────────────────────────
+fastapi>=0.110.0          # REST API
+uvicorn[standard]>=0.27.0 # ASGI server
+python-multipart>=0.0.9   # upload file (multipart/form-data)
+pydantic>=2.0.0           # request/response schema
+
+# ── Online Pipeline: Text extraction CV ──────────────────────
+pypdf>=4.0.0              # đọc PDF
+python-docx>=1.1.0        # đọc DOCX
+
+# ── Online Pipeline: AI Recommendation ───────────────────────
+openai>=1.0.0             # GPT-4o (đọc OPENAI_API_KEY từ env)
+python-dotenv>=1.0.0      # tự nạp .env (OPENAI_API_KEY)
+
+# ── Online Pipeline: Frontend Streamlit ──────────────────────
+streamlit>=1.30.0         # giao diện web
+plotly>=5.18.0            # gauge chart Match Score
+requests>=2.31.0          # gọi API từ frontend

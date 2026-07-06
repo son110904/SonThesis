@@ -1,0 +1,29 @@
+__pycache__/
+*.pyc
+
+# Secrets — KHÔNG commit
+.env
+.streamlit/secrets.toml
+
+# Local artifacts
+data/app.db
+data/job_resume_fit.csv
+data/VietJobsJD.csv
+*.log
+
+# Model weights — quá lớn (GB), không đưa vào git (GitHub chặn >100MB)
+models/
+
+# Claude Code internal
+.claude/
+
+# Design preview build output (dev tool)
+tools/preview_build/
+
+Claude.md
+
+# Bản sao lưu occupation profiles (trùng dữ liệu chính)
+data/occupation_profiles_backup/
+
+# Agent config nội bộ (không thuộc nội dung luận văn)
+.agents/

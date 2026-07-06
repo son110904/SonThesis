@@ -1,0 +1,11 @@
+[server]
+fileWatcherType = "none"
+
+[theme]
+base = "light"
+# Màu thương hiệu (nâu đất) — áp cho toggle, checkbox, focus ring... những widget
+# mà CSS custom không chạm tới (mặc định Streamlit là đỏ #FF4B4B, lệch tông).
+primaryColor = "#8A3F22"
+backgroundColor = "#F8F2E9"
+secondaryBackgroundColor = "#FBF5EC"
+textColor = "#241710"
