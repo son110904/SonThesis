@@ -30,7 +30,8 @@ python-multipart>=0.0.9   # upload file (multipart/form-data)
 pydantic>=2.0.0           # request/response schema
 
 # ── Online Pipeline: Text extraction CV ──────────────────────
-pypdf>=4.0.0              # đọc PDF
+pypdf>=4.0.0              # đọc PDF (fallback khi pdfplumber lỗi)
+pdfplumber>=0.11.0        # đọc PDF theo vị trí (bounding box) → dò layout 2 cột
 python-docx>=1.1.0        # đọc DOCX
 
 # ── Online Pipeline: AI Recommendation ───────────────────────
