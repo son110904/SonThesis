@@ -178,3 +178,56 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
             "🗺️ Lộ trình phát triển</div>" + "".join(steps_html) + "</div>",
             unsafe_allow_html=True,
         )
+
+
+def render_cv_improvement(improvement: dict) -> None:
+    """
+    Render AI CV Improvement — tiếp nối AI CV Review: bố cục, diễn đạt, chính
+    tả/ngữ pháp, và gợi ý viết lại từng bullet (current → rewrite).
+    """
+    import streamlit as st
+
+    blocks = (
+        _review_block("Bố cục CV", "🗂️", improvement.get("structure_review", []), "#6a4fb0")
+        + _review_block("Chất lượng diễn đạt", "🖋️", improvement.get("writing_review", []), "#b06a00")
+        + _review_block("Chính tả & ngữ pháp", "🔤", improvement.get("grammar_review", []), "#2e7d5b")
+    )
+    st.markdown(f'<div class="rv-stack">{blocks}</div>', unsafe_allow_html=True)
+
+    rewrites = improvement.get("rewrite_suggestions", [])
+    if rewrites:
+        rows = []
+        for item in rewrites:
+            current = html.escape(str(item.get("current", "")))
+            rewrite = html.escape(str(item.get("rewrite", "")))
+            rows.append(
+                '<div class="rw-pair">'
+                f'<div class="rw-block rw-current"><span class="rw-tag">Hiện tại</span>{current}</div>'
+                f'<div class="rw-block rw-rewrite"><span class="rw-tag">Gợi ý viết lại</span>{rewrite}</div>'
+                "</div>"
+            )
+        st.markdown(
+            '<div class="rv-card"><div class="rv-card-title" style="color:var(--accent)">'
+            "✨ Gợi ý viết lại bullet</div>" + "".join(rows) + "</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def render_application_email(email: dict) -> None:
+    """Render email ứng tuyển do AI soạn (subject + body + matching highlights)."""
+    import streamlit as st
+
+    subject = html.escape(str(email.get("subject", "")))
+    body_html = html.escape(str(email.get("body", ""))).replace("\n", "<br>")
+    highlights = email.get("matching_highlights", [])
+
+    st.markdown(
+        f'<div class="rv-overall"><div class="rv-overall-label">✉️ {subject}</div>'
+        f'<div class="rv-overall-body">{body_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+    if highlights:
+        st.markdown(
+            _review_block("Điểm nhấn phù hợp với vị trí", "⭐", highlights, "#2e7d5b"),
+            unsafe_allow_html=True,
+        )

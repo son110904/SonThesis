@@ -109,7 +109,8 @@ def render_recommend_page() -> None:
 
     # ── Quay lại upload CV khác ──────────────────────────────────────────────
     if st.button("← Tải lên CV khác", key="back_home"):
-        for k in ("recommendations", "candidate_profile", "candidate_embedding", "result"):
+        for k in ("recommendations", "candidate_profile", "candidate_embedding",
+                  "result", "application_email"):
             st.session_state.pop(k, None)
         st.session_state["view"] = "home"
         st.rerun()

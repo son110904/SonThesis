@@ -33,6 +33,9 @@ class CandidateProfileOut(BaseModel):
     experience: list[str] = []
     projects: list[str] = []
     education: list[str] = []
+    # Nội dung CV gốc — dùng cho CV Improvement (Grammar/Structure review) và
+    # Application Email. Optional để không phá vỡ response cũ.
+    raw_text: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -84,3 +87,28 @@ class ReviewRequest(BaseModel):
     candidate_embedding: list[float]
     occupation: str
     include_recommendation: bool = True
+
+
+class CVImprovementRequest(BaseModel):
+    """Body endpoint POST /cv-improvement (tái dùng profile + điểm số đã tính)."""
+
+    candidate_profile: dict
+    occupation: str
+    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+
+
+class ApplicationEmailRequest(BaseModel):
+    """Body endpoint POST /application-email (chỉ gọi khi người dùng chủ động bấm nút)."""
+
+    candidate_profile: dict
+    occupation: str
+    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+    cv_review: Optional[dict] = None

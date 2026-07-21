@@ -100,6 +100,13 @@ class AnalysisResult:
     cv_review: Optional[dict] = None
 
     def to_dict(self) -> dict:
+        # raw_text được thêm riêng ở đây (không đổi CandidateProfile.to_dict()) để
+        # CV Improvement / Application Email (dùng "Nội dung CV gốc") có đủ dữ liệu
+        # dù đến từ luồng nào (recommend→review hay phân tích thủ công 1 nghề).
+        candidate_profile_dict = {
+            **self.candidate_profile.to_dict(),
+            "raw_text": self.candidate_profile.raw_text,
+        }
         return {
             "occupation_key": self.occupation_key,
             "occupation_display": self.occupation_display,
@@ -109,7 +116,7 @@ class AnalysisResult:
             "matched_skills": self.skill_gap.matched_skills,
             "missing_skills": self.skill_gap.missing_skills,
             "extra_skills": self.skill_gap.extra_skills,
-            "candidate_profile": self.candidate_profile.to_dict(),
+            "candidate_profile": candidate_profile_dict,
             "ai_recommendation": self.ai_recommendation,
             "cv_review": self.cv_review,
         }

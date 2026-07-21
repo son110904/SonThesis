@@ -478,6 +478,23 @@ ul[role="listbox"] li[role="option"]:hover {{
 .rv-stack {{ display: flex; flex-direction: column; }}
 .rv-stack .rv-card {{ margin-bottom: 1rem; }}
 
+/* ─── AI CV Improvement: gợi ý viết lại (current → rewrite) ─────────── */
+.rw-pair {{
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
+  padding: 0.9rem 0; border-top: 1px dashed var(--border);
+}}
+.rw-pair:first-of-type {{ border-top: none; padding-top: 0.3rem; }}
+.rw-block {{ font-size: 0.9rem; line-height: 1.55; color: var(--text); }}
+.rw-current {{ opacity: 0.75; }}
+.rw-rewrite {{ color: var(--accent); font-weight: 500; }}
+.rw-tag {{
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}}
+@media (max-width: 900px) {{
+  .rw-pair {{ grid-template-columns: 1fr; }}
+}}
+
 /* ─── Section heading ───────────────────────────────── */
 .section-h {{
   font-family: 'Fraunces', Georgia, serif; font-size: 1.45rem;

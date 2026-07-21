@@ -9,8 +9,11 @@ from src.frontend.components import (
     render_match_gauge,
     render_metric_card,
     render_cv_review,
+    render_cv_improvement,
+    render_application_email,
     render_skill_badges,
 )
+from src.frontend.utils.api_client import APIError, generate_application_email
 from src.frontend.utils.styling import img_tag, render_footer
 
 
@@ -57,7 +60,8 @@ def render_result() -> None:
                 st.session_state["view"] = "recommend"
                 st.rerun()
         if st.button("← Phân tích CV khác", use_container_width=True):
-            for k in ("recommendations", "candidate_profile", "candidate_embedding", "result"):
+            for k in ("recommendations", "candidate_profile", "candidate_embedding",
+                      "result", "application_email"):
                 st.session_state.pop(k, None)
             st.session_state["view"] = "home"
             st.rerun()
@@ -98,6 +102,45 @@ def render_result() -> None:
     # ── HERO: AI CV Review (đầu ra trung tâm) ─────────────────────────────────
     st.markdown('<div class="section-h">🤖 Nhận xét chi tiết từ Shiba AI</div>', unsafe_allow_html=True)
     render_cv_review(result.get("cv_review"), result.get("ai_recommendation"))
+
+    # ── AI CV Improvement: tiếp nối AI CV Review, sinh tự động (nếu có) ───────
+    if result.get("cv_improvement"):
+        st.markdown('<div class="section-h">✍️ Gợi ý cải thiện CV</div>', unsafe_allow_html=True)
+        render_cv_improvement(result["cv_improvement"])
+
+    # ── AI Application Email: CHỈ sinh khi người dùng bấm nút ─────────────────
+    st.markdown('<div class="section-h">✉️ Chuẩn bị ứng tuyển</div>', unsafe_allow_html=True)
+    application_email = st.session_state.get("application_email")
+    if application_email:
+        render_application_email(application_email)
+        if st.button("↻ Tạo lại email khác"):
+            st.session_state.pop("application_email", None)
+            st.rerun()
+    else:
+        if st.button("✉️ Tạo email ứng tuyển", type="primary"):
+            with st.spinner("Shiba đang soạn email ứng tuyển…"):
+                try:
+                    email = generate_application_email(
+                        candidate_profile=result.get("candidate_profile", {}),
+                        occupation_key=result["occupation_key"],
+                        match_score=result["match_score"],
+                        semantic_similarity_score=result["semantic_similarity_score"],
+                        weighted_skill_score=result["weighted_skill_score"],
+                        matched_skills=result.get("matched_skills", []),
+                        missing_skills=result.get("missing_skills", []),
+                        cv_review=result.get("cv_review"),
+                    )
+                except APIError as e:
+                    st.error(f"Không tạo được email: {e}")
+                    email = None
+            if email:
+                st.session_state["application_email"] = email
+                st.rerun()
+            else:
+                st.warning(
+                    "CV chưa đủ thông tin để soạn email cá nhân hóa cho vị trí này, "
+                    "hoặc dịch vụ AI hiện không khả dụng."
+                )
 
     # ── Hỗ trợ: đối chiếu kỹ năng (giải thích kết quả) ───────────────────────
     with st.expander("🔎 Chi tiết đối chiếu kỹ năng (hỗ trợ giải thích)", expanded=False):
