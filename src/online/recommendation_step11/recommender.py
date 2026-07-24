@@ -36,6 +36,13 @@ _SYSTEM_PROMPT = (
     "Bạn là chuyên viên tuyển dụng cấp cao kiêm mentor nghề nghiệp, đang review CV của "
     "ứng viên cho một vị trí cụ thể. Nhiệm vụ: đọc kỹ hồ sơ và đưa ra nhận xét sắc bén, "
     "cá nhân hóa, như một người thật đang đánh giá CV.\n"
+    "ĐẶC BIỆT — nhận diện FRESHER / NEW GRADUATE: "
+    "Nếu ứng viên chưa có hoặc ít kinh nghiệm làm việc thực tế, hãy đánh giá theo góc nhìn "
+    "khác: (a) Career Objective thay vì Professional Summary — nhà tuyển dụng muốn thấy "
+    "định hướng rõ ràng trong 2-3 năm tới thay vì tóm tắt quá khứ; (b) Education là "
+    "điểm tựa chính — điểm số, thành tích học tập, đồ án/seminar phải nổi bật; "
+    "(c) Project/Dự án cá nhân quan trọng hơn — thể hiện được năng lực tự học và "
+    "đam mê; (d) Experience dù ngắn vẫn được nếu có con số cụ thể.\n"
     "RÀNG BUỘC BẮT BUỘC:\n"
     "1. Chỉ dựa trên NỘI DUNG THỰC TẾ trong hồ sơ ứng viên được cung cấp. TUYỆT ĐỐI "
     "không bịa ra kinh nghiệm, dự án hay kỹ năng không xuất hiện.\n"
@@ -61,8 +68,8 @@ _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
   "overall_assessment": "string — đánh giá mức độ phù hợp của CV với vị trí, GIẢI THÍCH rõ nguyên nhân dựa trên hồ sơ thực tế (3-5 câu).",
   "strengths": ["string — mỗi điểm mạnh gắn với kinh nghiệm/dự án/kỹ năng CỤ THỂ trong CV"],
   "missing_skills": ["string — kỹ năng còn thiếu hoặc chưa thể hiện rõ, vd 'Chưa thấy kinh nghiệm Microservices', 'Redis chưa xuất hiện'"],
-  "cv_quality": ["string — nhận xét về cách trình bày CV, vd 'Mô tả dự án quá ngắn', 'Chưa lượng hóa kết quả bằng số liệu', 'Chưa nêu rõ vai trò trong dự án'"],
-  "recommendations": ["string — đề xuất cải thiện CỤ THỂ, gắn trực tiếp với điểm yếu vừa nêu"],
+  "cv_quality": ["string — nhận xét về cách trình bày CV. Đặc biệt với FRESHER/NEW GRADUATE: (1) BỐ CỤC: kiểm tra thứ tự sections — đúng: CONTACT → SUMMARY/OBJECTIVE → SKILLS → EDUCATION → EXPERIENCE → PROJECTS → CERTIFICATIONS. 'Professional Summary' nên ở sau 'Contact', 'Skills' nên lên trước 'Work Experience'; (2) Professional Summary → có nên đổi thành Career Objective (định hướng 2-3 năm tới muốn theo hướng nào, làm gì) không; (3) Contact info có đặt dưới tên chưa; (4) Education có nêu điểm số/thành tích nổi bật chưa (vì fresher chưa có kinh nghiệm → education là điểm tựa); (5) Experience có lượng hóa bằng SỐ CỤ THỂ chưa (dù ngắn cũng được, ví dụ: 'phát triển API phục vụ 1000 user/ngày')."],
+  "recommendations": ["string — đề xuất cải thiện CỤ THỂ, gắn trực tiếp với điểm yếu vừa nêu. Với fresher: (1) sắp xếp bố cục đúng: Contact → Summary/Objective → Skills → Education → Experience → Projects → Certifications; (2) khuyến khích viết Career Objective thay vì Professional Summary nếu chưa có định hướng rõ; (3) hướng dẫn đưa con số cụ thể vào Experience; (4) đặt Education lên trên nếu điểm/thành tích đáng kể."],
   "learning_roadmap": [
     {"phase": "string — tên giai đoạn, vd 'Giai đoạn 1 (0-1 tháng)'", "focus": "string — trọng tâm", "items": ["string — việc cần làm/kỹ năng cần học cụ thể"]}
   ]
