@@ -84,7 +84,7 @@ def render_landing() -> None:
               <div class="sp-row">
                 <span class="sp-badge"><span class="spb-ico">🧠</span> gte-multilingual</span>
                 <span class="sp-badge"><span class="spb-ico">🤖</span> GPT-4o</span>
-                <span class="sp-badge"><span class="spb-ico">📊</span> 97+ nhóm nghề</span>
+                <span class="sp-badge"><span class="spb-ico">📊</span> 97 nhóm nghề</span>
                 <span class="sp-badge"><span class="spb-ico">⚡</span> Semantic Matching</span>
               </div>
             </div>
