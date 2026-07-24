@@ -18,12 +18,27 @@ def _go_review(occupation_key: str) -> None:
     st.rerun()
 
 
+def _chips(skills: list[str], cls: str, prefix: str = "", limit: int = 4) -> str:
+    """Render vài skill thành badge nhỏ + '+N' nếu dư. Rỗng → chuỗi rỗng."""
+    if not skills:
+        return ""
+    shown = skills[:limit]
+    extra = len(skills) - len(shown)
+    chips = "".join(
+        f'<span class="badge {cls}">{(prefix + " ") if prefix else ""}{html.escape(str(s))}</span>'
+        for s in shown
+    )
+    if extra > 0:
+        chips += f'<span class="badge badge-muted">+{extra}</span>'
+    return chips
+
+
 def _confidence(pct: float) -> tuple[str, str, str]:
     """Nhãn độ phù hợp suy ra TRỰC TIẾP từ match score (không bịa dữ liệu ngoài)."""
     if pct >= 70:
         return "Độ phù hợp cao", "var(--good-bg)", "var(--good)"
     if pct >= 40:
-        return "Phù hợp một phần", "var(--warn-bg)", "var(--warn)"
+        return "Khá phù hợp", "var(--warn-bg)", "var(--warn)"
     return "Cần cân nhắc", "var(--bad-bg)", "var(--bad)"
 
 
@@ -60,6 +75,9 @@ def render_recommend_page() -> None:
         wgt = round(r["weighted_skill_score"] * 100, 1)
         color = score_color(r["match_score"])
         confidence, cf_bg, cf_fg = _confidence(pct)
+        reason = r.get("reason", "")
+        matched_html = _chips(r.get("matched_skills", []), "badge-matched", "✓")
+        missing_html = _chips(r.get("missing_skills", []), "badge-missing", "")
         with col:
             st.markdown(
                 f"""
@@ -75,6 +93,9 @@ def render_recommend_page() -> None:
                     <div class="rm-row" style="margin-top:0.6rem"><span>⭐ Kỹ năng</span><b>{wgt:g}</b></div>
                     <div class="rm-track"><div class="rm-fill" style="width:{wgt}%;background:{color}"></div></div>
                   </div>
+                  {f'<div class="rec-why">{html.escape(reason)}</div>' if reason else ''}
+                  {f'<div class="rec-chips">{matched_html}</div>' if matched_html else ''}
+                  {f'<div class="rec-chips rc-missing"><span class="rc-lbl">Còn thiếu:</span>{missing_html}</div>' if missing_html else ''}
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -88,7 +109,8 @@ def render_recommend_page() -> None:
 
     # ── Quay lại upload CV khác ──────────────────────────────────────────────
     if st.button("← Tải lên CV khác", key="back_home"):
-        for k in ("recommendations", "candidate_profile", "candidate_embedding", "result"):
+        for k in ("recommendations", "candidate_profile", "candidate_embedding",
+                  "result", "application_email"):
             st.session_state.pop(k, None)
         st.session_state["view"] = "home"
         st.rerun()

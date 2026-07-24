@@ -45,7 +45,6 @@ def analyze_cv(
     filename: str,
     occupation_key: str,
     include_recommendation: bool = True,
-    persist: bool = True,
 ) -> AnalysisResult:
     """
     Chạy toàn bộ pipeline phân tích CV với 1 nghề mục tiêu.
@@ -55,7 +54,6 @@ def analyze_cv(
         filename:               Tên file (xác định loại).
         occupation_key:         Key nghề (từ list_occupations).
         include_recommendation: Có gọi LLM sinh khuyến nghị không.
-        persist:                Có lưu lịch sử vào SQLite không.
 
     Returns:
         AnalysisResult đầy đủ.
@@ -93,11 +91,7 @@ def analyze_cv(
     candidate_embedding = embed_candidate(profile)
 
     # Bước 6-11: chấm điểm + AI review cho nghề này
-    result = _analyze_one(profile, candidate_embedding, occupation, include_recommendation)
-
-    if persist:
-        _save_history(filename, result)
-    return result
+    return _analyze_one(profile, candidate_embedding, occupation, include_recommendation)
 
 
 def _analyze_one(
@@ -165,7 +159,6 @@ def review_occupation(
     candidate_embedding: list[float],
     occupation_key: str,
     include_recommendation: bool = True,
-    persist: bool = True,
 ) -> AnalysisResult:
     """
     Sinh AI CV Review cho 1 nghề người dùng chọn, TÁI DÙNG candidate profile +
@@ -185,17 +178,4 @@ def review_occupation(
         education=candidate_profile.get("education", []),
         raw_text=candidate_profile.get("raw_text", ""),
     )
-    result = _analyze_one(profile, candidate_embedding, occupation, include_recommendation)
-    if persist:
-        _save_history(candidate_profile.get("filename", "cv"), result)
-    return result
-
-
-def _save_history(filename: str, result: AnalysisResult) -> None:
-    """Lưu kết quả vào lịch sử. Lỗi DB không làm hỏng phân tích."""
-    try:
-        from src.database import save_evaluation
-
-        save_evaluation(cv_filename=filename, result=result)
-    except Exception as e:  # noqa: BLE001
-        logger.error(f"Không lưu được lịch sử đánh giá: {e}")
+    return _analyze_one(profile, candidate_embedding, occupation, include_recommendation)

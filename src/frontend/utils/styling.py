@@ -478,6 +478,23 @@ ul[role="listbox"] li[role="option"]:hover {{
 .rv-stack {{ display: flex; flex-direction: column; }}
 .rv-stack .rv-card {{ margin-bottom: 1rem; }}
 
+/* ─── AI CV Improvement: gợi ý viết lại (current → rewrite) ─────────── */
+.rw-pair {{
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
+  padding: 0.9rem 0; border-top: 1px dashed var(--border);
+}}
+.rw-pair:first-of-type {{ border-top: none; padding-top: 0.3rem; }}
+.rw-block {{ font-size: 0.9rem; line-height: 1.55; color: var(--text); }}
+.rw-current {{ opacity: 0.75; }}
+.rw-rewrite {{ color: var(--accent); font-weight: 500; }}
+.rw-tag {{
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}}
+@media (max-width: 900px) {{
+  .rw-pair {{ grid-template-columns: 1fr; }}
+}}
+
 /* ─── Section heading ───────────────────────────────── */
 .section-h {{
   font-family: 'Fraunces', Georgia, serif; font-size: 1.45rem;
@@ -828,6 +845,15 @@ ul[role="listbox"] li[role="option"]:hover {{
 .rec-metric .rm-row b {{ color:var(--text); font-size:0.92rem; }}
 .rec-metric .rm-track {{ height:7px; background:#EFE6DA; border-radius:999px; margin-top:0.35rem; overflow:hidden; }}
 .rec-metric .rm-fill {{ height:100%; border-radius:999px; transition:width 0.7s cubic-bezier(0.16,1,0.3,1); }}
+/* "Vì sao phù hợp" + chip kỹ năng khớp/thiếu trên mỗi card Top 3 */
+.rec-why {{
+  margin-top:1rem; padding-top:0.85rem; border-top:1px dashed var(--border);
+  font-size:0.84rem; line-height:1.5; color:var(--muted);
+}}
+.rec-chips {{ display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; margin-top:0.6rem; }}
+.rec-chips .badge {{ font-size:0.72rem; padding:0.22rem 0.6rem; animation:none; }}
+.rec-chips.rc-missing {{ margin-top:0.5rem; }}
+.rec-chips .rc-lbl {{ font-size:0.72rem; font-weight:700; color:var(--muted); margin-right:0.15rem; }}
 
 /* Reduced-motion: reveal all animated redesign elements statically */
 @media (prefers-reduced-motion: reduce) {{

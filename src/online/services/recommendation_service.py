@@ -19,11 +19,33 @@ from src.online.semantic_matching_step7 import compute_semantic_score
 from src.online.semantic_skill_match import match_skills
 from src.online.weighted_matching_step8 import compute_weighted_skill_score
 from src.online.scoring_step9 import compute_final_score
+from src.online.skill_gap_step10 import analyze_skill_gap
 from src.online.services.occupation_loader import list_occupations, get_occupation
 from src.online.services.analysis_service import EmptyCVError
 from src.online.validation import NotACVError, is_cv
 
 logger = logging.getLogger(__name__)
+
+
+def _build_reason(scores, matched_core: list[str], total_core: int) -> str:
+    """
+    Sinh 1 câu GIẢI THÍCH ngắn vì sao nghề này phù hợp — SUY TỪ dữ liệu đã tính
+    (kỹ năng cốt lõi khớp + tín hiệu điểm mạnh nhất). KHÔNG gọi LLM → miễn phí,
+    tái lập được. Mỗi card Top 3 nhờ đó có "lý do" thay vì chỉ trơ con số.
+    """
+    sem = scores.semantic_similarity_score * 100
+    wgt = scores.weighted_skill_score * 100
+    bits: list[str] = []
+    if matched_core:
+        preview = ", ".join(matched_core[:4])
+        bits.append(f"Khớp {len(matched_core)}/{total_core} kỹ năng cốt lõi ({preview})")
+    elif total_core:
+        bits.append(f"Chưa khớp kỹ năng cốt lõi nào trong {total_core} yêu cầu")
+    if sem >= wgt:
+        bits.append(f"hồ sơ tương đồng ngữ nghĩa cao ({sem:.0f}%)")
+    else:
+        bits.append(f"nhiều kỹ năng khớp yêu cầu ({wgt:.0f}%)")
+    return "; ".join(bits) + "."
 
 
 def recommend_occupations(
@@ -84,12 +106,21 @@ def recommend_occupations(
         weighted_score = compute_weighted_skill_score(profile.skills, occupation, skill_match)
         scores = compute_final_score(semantic_score, weighted_score)
 
+        # Giải thích "vì sao phù hợp" cho từng nghề — tái dùng skill_match (không
+        # embed lại), suy ra kỹ năng khớp/thiếu + 1 câu lý do. KHÔNG gọi LLM.
+        gap = analyze_skill_gap(profile.skills, occupation, skill_match)
+        core_keys = set(occupation.get("core_skills", {}).keys())
+        matched_core = [s for s in gap.matched_skills if s in core_keys]
+
         scored.append({
             "occupation_key": occ_key,
             "occupation_display": occupation["_display"],
             "match_score": scores.match_score,
             "semantic_similarity_score": scores.semantic_similarity_score,
             "weighted_skill_score": scores.weighted_skill_score,
+            "matched_skills": gap.matched_skills[:8],
+            "missing_skills": gap.missing_skills[:6],
+            "reason": _build_reason(scores, matched_core, len(core_keys)),
         })
 
     scored.sort(key=lambda x: x["match_score"], reverse=True)

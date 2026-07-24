@@ -6,6 +6,8 @@ from src.frontend.components.cards import (
     render_metric_card,
     render_recommendation_card,
     render_cv_review,
+    render_cv_improvement,
+    render_application_email,
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "render_metric_card",
     "render_recommendation_card",
     "render_cv_review",
+    "render_cv_improvement",
+    "render_application_email",
 ]

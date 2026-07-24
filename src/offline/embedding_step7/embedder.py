@@ -88,15 +88,31 @@ def _reset_position_ids(model) -> None:
     Workaround: Python 3.14 + PyTorch 2.12 — buffer position_ids (persistent=False)
     bị corrupt do memory reuse khi init model, gây IndexError tại rope_cos[position_ids].
     Re-register lại với giá trị đúng (torch.arange).
+
+    ⚠️ QUAN TRỌNG: reset này giúp KHÔNG crash, nhưng trên Python 3.14 embedding vẫn
+    SUY GIẢM (đo được: Spearman rớt 0.855 → ~0.25) do bất tương thích torch2.12 với
+    rope của model. Chỉ Python 3.12 mới cho kết quả ĐÚNG. Deploy Docker (3.12) ổn.
+    Khi phát hiện corrupt → cảnh báo TO để không bị suy giảm thầm lặng.
     """
     try:
         emb = model._first_module().auto_model.embeddings
         if hasattr(emb, "position_ids"):
-            emb.register_buffer(
-                "position_ids",
-                torch.arange(emb.position_ids.size(0)),
-                persistent=False,
-            )
+            pid = emb.position_ids
+            n = int(pid.size(0) if pid.dim() == 1 else pid.size(-1))
+            # Corrupt = có giá trị nằm ngoài [0, n) (bug 3.14/torch2.12).
+            corrupt = bool((pid.max().item() >= n) or (pid.min().item() < 0))
+            emb.register_buffer("position_ids", torch.arange(n), persistent=False)
+            if corrupt:
+                pyver = ".".join(map(str, sys.version_info[:2]))
+                logger.warning(
+                    "=" * 70 + "\n"
+                    "⚠️  position_ids CORRUPT (Python %s + torch — bug 3.14/torch2.12).\n"
+                    "    Đã reset để tránh crash, NHƯNG embedding SUY GIẢM CHẤT LƯỢNG\n"
+                    "    (Spearman ~0.25 thay vì ~0.855). Kết quả matching/Top-3 KHÔNG\n"
+                    "    đáng tin. → Hãy chạy bằng PYTHON 3.12. Deploy Docker (3.12) ổn.\n"
+                    + "=" * 70,
+                    pyver,
+                )
     except Exception as _e:
         logger.warning(f"Không thể reset position_ids: {_e}")
 

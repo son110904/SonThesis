@@ -7,6 +7,8 @@ __pycache__/
 
 # Local artifacts
 data/app.db
+data/job_resume_fit.csv
+data/VietJobsJD.csv
 *.log
 
 # Model weights — quá lớn (GB), không đưa vào git (GitHub chặn >100MB)

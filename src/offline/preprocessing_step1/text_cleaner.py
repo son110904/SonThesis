@@ -294,6 +294,131 @@ def clean_resume_fit_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ── Data Summary Display ────────────────────────────────────────────────────
+
+def display_data_summary(df: pd.DataFrame, dataset_name: str = "JD Dataset") -> None:
+    """
+    Hiển thị bảng thống kê dữ liệu sau khi làm sạch.
+
+    Args:
+        df: DataFrame đã được làm sạch.
+        dataset_name: Tên dataset để hiển thị.
+    """
+    print("\n" + "=" * 70)
+    print(f"📊 DATA SUMMARY: {dataset_name}")
+    print("=" * 70)
+
+    # 1. Overall stats
+    print(f"\n📌 Total Records: {len(df):,}")
+    print(f"📌 Total Columns: {len(df.columns)}")
+
+    # 2. Category distribution (nếu có)
+    if "category" in df.columns:
+        print("\n📂 Category Distribution:")
+        cat_counts = df["category"].value_counts()
+        cat_df = pd.DataFrame({
+            "Category": cat_counts.index,
+            "Count": cat_counts.values,
+            "Percentage": (cat_counts.values / len(df) * 100).round(1)
+        })
+        print(cat_df.to_string(index=False))
+
+    # 3. Skills statistics
+    print("\n🛠️ Skills Statistics:")
+    for col in ["technical_skills_parsed", "soft_skills_parsed"]:
+        if col in df.columns:
+            all_skills = df[col].explode().dropna().tolist()
+            unique_skills = set(all_skills)
+            skill_name = col.replace("_parsed", "").replace("_", " ").title()
+            print(f"  • {skill_name}:")
+            print(f"    - Total skill mentions: {len(all_skills):,}")
+            print(f"    - Unique skills: {len(unique_skills):,}")
+
+            # Top 10 most common skills
+            if all_skills:
+                skill_freq = pd.Series(all_skills).value_counts().head(10)
+                print(f"    - Top 10 skills:")
+                for skill, count in skill_freq.items():
+                    print(f"        {skill}: {count}")
+
+    # 4. Text length statistics
+    if "full_text" in df.columns:
+        text_lengths = df["full_text"].str.len()
+        print("\n📝 Full Text Length Statistics:")
+        print(f"  • Min: {text_lengths.min():,} chars")
+        print(f"  • Max: {text_lengths.max():,} chars")
+        print(f"  • Mean: {text_lengths.mean():,.0f} chars")
+        print(f"  • Median: {text_lengths.median():,.0f} chars")
+
+    # 5. Sample cleaned records
+    print("\n📋 Sample Cleaned Records:")
+    sample_cols = ["category", "title"] if "title" in df.columns else ["category"]
+    if "technical_skills_parsed" in df.columns:
+        sample_cols.append("technical_skills_parsed")
+    if "soft_skills_parsed" in df.columns:
+        sample_cols.append("soft_skills_parsed")
+
+    available_cols = [c for c in sample_cols if c in df.columns]
+    if available_cols:
+        sample_df = df[available_cols].head(3)
+        for idx, row in sample_df.iterrows():
+            print(f"\n  [Record {idx + 1}]")
+            for col in available_cols:
+                val = row[col]
+                if isinstance(val, list):
+                    val = ", ".join(val[:5]) + ("..." if len(val) > 5 else "")
+                elif isinstance(val, str) and len(val) > 100:
+                    val = val[:100] + "..."
+                print(f"    {col}: {val}")
+
+    print("\n" + "=" * 70)
+
+
+def display_resume_fit_summary(df: pd.DataFrame) -> None:
+    """
+    Hiển thị bảng thống kê cho Resume-Fit dataset.
+
+    Args:
+        df: DataFrame đã được làm sạch.
+    """
+    print("\n" + "=" * 70)
+    print("📊 DATA SUMMARY: Resume-Fit Dataset")
+    print("=" * 70)
+
+    print(f"\n📌 Total Records: {len(df):,}")
+    print(f"📌 Total Columns: {len(df.columns)}")
+
+    # Resume text length
+    if "resume_text" in df.columns:
+        resume_lengths = df["resume_text"].str.len()
+        print("\n📝 Resume Text Length:")
+        print(f"  • Min: {resume_lengths.min():,} chars")
+        print(f"  • Max: {resume_lengths.max():,} chars")
+        print(f"  • Mean: {resume_lengths.mean():,.0f} chars")
+        print(f"  • Median: {resume_lengths.median():,.0f} chars")
+
+    # Job text length
+    if "job_text" in df.columns:
+        job_lengths = df["job_text"].str.len()
+        print("\n💼 Job Text Length:")
+        print(f"  • Min: {job_lengths.min():,} chars")
+        print(f"  • Max: {job_lengths.max():,} chars")
+        print(f"  • Mean: {job_lengths.mean():,.0f} chars")
+        print(f"  • Median: {job_lengths.median():,.0f} chars")
+
+    # Match score distribution
+    if "ai_match_score" in df.columns:
+        scores = df["ai_match_score"]
+        print("\n🎯 Match Score Distribution:")
+        print(f"  • Min: {scores.min():.2f}")
+        print(f"  • Max: {scores.max():.2f}")
+        print(f"  • Mean: {scores.mean():.2f}")
+        print(f"  • Median: {scores.median():.2f}")
+        print(f"  • Std: {scores.std():.2f}")
+
+    print("\n" + "=" * 70)
+
+
 # ── CLI test ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     logging.basicConfig(
@@ -332,6 +457,9 @@ if __name__ == "__main__":
     print(f"Shape: {df_jd_clean.shape}")
     print(f"Columns mới: {[c for c in df_jd_clean.columns if c not in df_jd.columns]}")
 
+    # Hiển thị summary sau khi clean
+    display_data_summary(df_jd_clean, "JD Dataset")
+
     # Xem IT sample
     it = df_jd_clean[df_jd_clean['category']=='công_nghệ_thông_tin_kỹ_thuật_số'].iloc[5]
     print(f"\ntechnical_skills_parsed: {it['technical_skills_parsed']}")
@@ -343,3 +471,6 @@ if __name__ == "__main__":
     df_rf_clean = clean_resume_fit_dataframe(df_rf)
     print(f"Shape: {df_rf_clean.shape}")
     print(f"Sample resume_text[:200]: {df_rf_clean[RESUME_TEXT_COL].iloc[0][:200]}")
+
+    # Hiển thị summary cho Resume-Fit
+    display_resume_fit_summary(df_rf_clean)

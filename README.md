@@ -3,11 +3,9 @@ title: ShibaCV
 emoji: 🐾
 colorFrom: orange
 colorTo: red
-sdk: streamlit
-sdk_version: 1.58.0
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: false
-python_version: "3.11"
 short_description: AI đánh giá độ phù hợp CV với nghề nghiệp
 ---
 

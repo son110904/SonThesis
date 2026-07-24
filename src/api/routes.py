@@ -2,10 +2,12 @@
 routes.py – Định nghĩa các endpoint API.
 
     GET  /health              kiểm tra trạng thái (model, LLM)
-    GET  /occupations         danh sách 16 nghề cho dropdown
-    POST /analyze             phân tích CV (multipart: file + occupation)
-    GET  /history             lịch sử đánh giá
-    GET  /history/{eval_id}   chi tiết 1 lần đánh giá
+    GET  /occupations         danh sách nghề cho dropdown
+    POST /analyze             phân tích CV với 1 nghề (multipart: file + occupation)
+    POST /recommend           gợi ý Top-K nghề phù hợp nhất
+    POST /review              sinh AI Review cho 1 nghề (tái dùng profile + embedding)
+    POST /cv-improvement      sinh AI CV Improvement (tiếp nối AI CV Review)
+    POST /application-email   sinh Application Email (chỉ khi người dùng bấm nút)
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from src.online.extraction_step2.text_extractor import UnsupportedFileType
 from src.online.services import (
     analyze_cv,
+    generate_application_email_for_occupation,
+    generate_cv_improvement_for_occupation,
     list_occupations,
     recommend_occupations,
     review_occupation,
@@ -25,12 +29,11 @@ from src.online.services.analysis_service import EmptyCVError
 from src.online.services.occupation_loader import OccupationNotFound
 from src.online.recommendation_step11.llm_client import get_llm_client
 from src.online.validation import NotACVError
-from src.database import list_evaluations, get_evaluation
 from src.api.schemas import (
     AnalyzeResponse,
+    ApplicationEmailRequest,
     CandidateProfileOut,
-    HistoryItem,
-    HistoryListResponse,
+    CVImprovementRequest,
     OccupationItem,
     OccupationListResponse,
     RecommendationItem,
@@ -171,37 +174,46 @@ def review(req: ReviewRequest) -> AnalyzeResponse:
     )
 
 
-@router.get("/history", response_model=HistoryListResponse)
-def history(limit: int = 50, occupation: str | None = None) -> HistoryListResponse:
-    """Lịch sử đánh giá (mới nhất trước)."""
-    rows = list_evaluations(limit=limit, occupation_key=occupation)
-    items = [HistoryItem(**_to_history_item(r)) for r in rows]
-    return HistoryListResponse(items=items)
+@router.post("/cv-improvement")
+def cv_improvement(req: CVImprovementRequest) -> dict:
+    """Sinh AI CV Improvement — tiếp nối AI CV Review (tái dùng profile + điểm số)."""
+    try:
+        result = generate_cv_improvement_for_occupation(
+            candidate_profile=req.candidate_profile,
+            occupation_key=req.occupation,
+            match_score=req.match_score,
+            semantic_similarity_score=req.semantic_similarity_score,
+            weighted_skill_score=req.weighted_skill_score,
+            matched_skills=req.matched_skills,
+            missing_skills=req.missing_skills,
+        )
+    except OccupationNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh AI CV Improvement")
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý: {e}")
+
+    return {"cv_improvement": result}
 
 
-@router.get("/history/{eval_id}", response_model=HistoryItem)
-def history_detail(eval_id: int) -> HistoryItem:
-    """Chi tiết 1 lần đánh giá."""
-    row = get_evaluation(eval_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"Không có bản ghi #{eval_id}.")
-    return HistoryItem(**_to_history_item(row))
+@router.post("/application-email")
+def application_email(req: ApplicationEmailRequest) -> dict:
+    """Sinh Application Email — CHỈ gọi khi người dùng chủ động bấm nút."""
+    try:
+        result = generate_application_email_for_occupation(
+            candidate_profile=req.candidate_profile,
+            occupation_key=req.occupation,
+            match_score=req.match_score,
+            semantic_similarity_score=req.semantic_similarity_score,
+            weighted_skill_score=req.weighted_skill_score,
+            matched_skills=req.matched_skills,
+            missing_skills=req.missing_skills,
+            cv_review=req.cv_review,
+        )
+    except OccupationNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh Application Email")
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý: {e}")
 
-
-def _to_history_item(row: dict) -> dict:
-    """Chuẩn hóa row DB → dict khớp HistoryItem (xử lý cột JSON/None)."""
-    profile = row.get("candidate_profile")
-    return {
-        "id": row["id"],
-        "created_at": row.get("created_at", ""),
-        "cv_filename": row.get("cv_filename"),
-        "occupation_key": row["occupation_key"],
-        "occupation_display": row.get("occupation_display"),
-        "match_score": row.get("match_score"),
-        "semantic_similarity_score": row.get("semantic_similarity_score"),
-        "weighted_skill_score": row.get("weighted_skill_score"),
-        "matched_skills": row.get("matched_skills") or [],
-        "missing_skills": row.get("missing_skills") or [],
-        "candidate_profile": profile if isinstance(profile, dict) else None,
-        "ai_recommendation": row.get("ai_recommendation"),
-    }
+    return {"application_email": result}

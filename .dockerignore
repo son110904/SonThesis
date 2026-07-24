@@ -1,0 +1,26 @@
+# Không đưa vào build context — giảm dung lượng/tránh rò rỉ dữ liệu không cần.
+.git/
+.claude/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Model fine-tuned: quá lớn, tải từ HF Hub lúc runtime (xem Dockerfile).
+models/
+
+# Dữ liệu train (chỉ cần cho offline pipeline / fine-tune, không cần lúc chạy).
+data/*.csv
+data/app.db
+data/occupation_profiles_backup/
+
+# Secrets — KHÔNG BAO GIỜ đưa vào image.
+.env
+.streamlit/secrets.toml
+
+# Không cần trong image chạy.
+tests/
+scripts/
+run_train_gpu.py
+push_model_to_hf.py
+*.log

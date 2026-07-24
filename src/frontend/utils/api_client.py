@@ -112,6 +112,49 @@ def _http_review(candidate_profile, candidate_embedding, occupation_key, include
     return _handle_response(resp)
 
 
+def _http_cv_improvement(
+    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills,
+) -> Optional[dict]:
+    import requests
+    payload = {
+        "candidate_profile": candidate_profile,
+        "occupation": occupation_key,
+        "match_score": match_score,
+        "semantic_similarity_score": semantic_similarity_score,
+        "weighted_skill_score": weighted_skill_score,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+    }
+    try:
+        resp = requests.post(_url("/cv-improvement"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /cv-improvement: {e}")
+    return _handle_response(resp).get("cv_improvement")
+
+
+def _http_application_email(
+    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills, cv_review,
+) -> Optional[dict]:
+    import requests
+    payload = {
+        "candidate_profile": candidate_profile,
+        "occupation": occupation_key,
+        "match_score": match_score,
+        "semantic_similarity_score": semantic_similarity_score,
+        "weighted_skill_score": weighted_skill_score,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "cv_review": cv_review,
+    }
+    try:
+        resp = requests.post(_url("/application-email"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /application-email: {e}")
+    return _handle_response(resp).get("application_email")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # EMBEDDED — gọi service layer trực tiếp (import lazy để chế độ REMOTE không
 # phải nạp torch/sentence-transformers)
@@ -201,6 +244,55 @@ def _embedded_review(candidate_profile, candidate_embedding, occupation_key, inc
     return result.to_dict()
 
 
+def _embedded_cv_improvement(
+    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills,
+) -> Optional[dict]:
+    from src.online.services import generate_cv_improvement_for_occupation as _svc_improve
+    from src.online.services.occupation_loader import OccupationNotFound
+
+    try:
+        return _svc_improve(
+            candidate_profile=candidate_profile,
+            occupation_key=occupation_key,
+            match_score=match_score,
+            semantic_similarity_score=semantic_similarity_score,
+            weighted_skill_score=weighted_skill_score,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+        )
+    except OccupationNotFound as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh AI CV Improvement (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_application_email(
+    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills, cv_review,
+) -> Optional[dict]:
+    from src.online.services import generate_application_email_for_occupation as _svc_email
+    from src.online.services.occupation_loader import OccupationNotFound
+
+    try:
+        return _svc_email(
+            candidate_profile=candidate_profile,
+            occupation_key=occupation_key,
+            match_score=match_score,
+            semantic_similarity_score=semantic_similarity_score,
+            weighted_skill_score=weighted_skill_score,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+            cv_review=cv_review,
+        )
+    except OccupationNotFound as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh Application Email (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # API công khai — tự định tuyến theo chế độ
 # ══════════════════════════════════════════════════════════════════════════
@@ -243,3 +335,38 @@ def review_occupation(
     if _REMOTE:
         return _http_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)
     return _embedded_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)
+
+
+def generate_cv_improvement(
+    candidate_profile: dict,
+    occupation_key: str,
+    match_score: float,
+    semantic_similarity_score: float,
+    weighted_skill_score: float,
+    matched_skills: list,
+    missing_skills: list,
+) -> Optional[dict]:
+    """Sinh AI CV Improvement — tiếp nối AI CV Review (tái dùng profile + điểm số)."""
+    args = (candidate_profile, occupation_key, match_score, semantic_similarity_score,
+            weighted_skill_score, matched_skills, missing_skills)
+    if _REMOTE:
+        return _http_cv_improvement(*args)
+    return _embedded_cv_improvement(*args)
+
+
+def generate_application_email(
+    candidate_profile: dict,
+    occupation_key: str,
+    match_score: float,
+    semantic_similarity_score: float,
+    weighted_skill_score: float,
+    matched_skills: list,
+    missing_skills: list,
+    cv_review: Optional[dict] = None,
+) -> Optional[dict]:
+    """Sinh Application Email — CHỈ gọi khi người dùng chủ động bấm nút."""
+    args = (candidate_profile, occupation_key, match_score, semantic_similarity_score,
+            weighted_skill_score, matched_skills, missing_skills, cv_review)
+    if _REMOTE:
+        return _http_application_email(*args)
+    return _embedded_application_email(*args)

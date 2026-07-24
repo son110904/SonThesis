@@ -33,6 +33,9 @@ class CandidateProfileOut(BaseModel):
     experience: list[str] = []
     projects: list[str] = []
     education: list[str] = []
+    # Nội dung CV gốc — dùng cho CV Improvement (Grammar/Structure review) và
+    # Application Email. Optional để không phá vỡ response cũ.
+    raw_text: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -63,6 +66,10 @@ class RecommendationItem(BaseModel):
     match_score: float = Field(..., ge=0, le=1)
     semantic_similarity_score: float = Field(..., ge=0, le=1)
     weighted_skill_score: float = Field(..., ge=0, le=1)
+    # Giải thích "vì sao phù hợp" (deterministic, không LLM).
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+    reason: str = ""
 
 
 class RecommendationResponse(BaseModel):
@@ -82,20 +89,26 @@ class ReviewRequest(BaseModel):
     include_recommendation: bool = True
 
 
-class HistoryItem(BaseModel):
-    id: int
-    created_at: str
-    cv_filename: Optional[str] = None
-    occupation_key: str
-    occupation_display: Optional[str] = None
-    match_score: Optional[float] = None
-    semantic_similarity_score: Optional[float] = None
-    weighted_skill_score: Optional[float] = None
+class CVImprovementRequest(BaseModel):
+    """Body endpoint POST /cv-improvement (tái dùng profile + điểm số đã tính)."""
+
+    candidate_profile: dict
+    occupation: str
+    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
     matched_skills: list[str] = []
     missing_skills: list[str] = []
-    candidate_profile: Optional[CandidateProfileOut] = None
-    ai_recommendation: Optional[str] = None
 
 
-class HistoryListResponse(BaseModel):
-    items: list[HistoryItem]
+class ApplicationEmailRequest(BaseModel):
+    """Body endpoint POST /application-email (chỉ gọi khi người dùng chủ động bấm nút)."""
+
+    candidate_profile: dict
+    occupation: str
+    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+    cv_review: Optional[dict] = None
