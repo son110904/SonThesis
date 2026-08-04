@@ -7,7 +7,7 @@ routes.py – Định nghĩa các endpoint API.
     POST /recommend           gợi ý Top-K nghề phù hợp nhất
     POST /review              sinh AI Review cho 1 nghề (tái dùng profile + embedding)
     POST /cv-improvement      sinh AI CV Improvement (tiếp nối AI CV Review)
-    POST /application-email   sinh Application Email (chỉ khi người dùng bấm nút)
+    POST /application-email    sinh Application Email (chỉ khi người dùng bấm nút)
 """
 
 from __future__ import annotations

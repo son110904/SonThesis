@@ -187,6 +187,92 @@ SKILL_PATTERNS: list[str] = [
     r"SAP", r"Oracle ERP", r"ERP",
     r"HubSpot", r"Salesforce", r"CRM",
     r"Adobe Premiere", r"After Effects",
+
+    # Kinh doanh / bán hàng / chăm sóc khách hàng
+    r"Bán hàng B2B", r"Bán hàng B2C", r"Telesales", r"Telemarketing",
+    r"Phát triển kinh doanh", r"Quản lý khách hàng", r"Chăm sóc khách hàng",
+    r"Quản lý quan hệ khách hàng", r"Quản lý kênh phân phối", r"Quản lý đại lý",
+    r"Merchandising", r"Trade Marketing", r"Trưng bày hàng hóa", r"POSM",
+    r"Quản lý doanh số", r"Dự báo bán hàng", r"Báo giá", r"Quản lý hợp đồng",
+    r"Khiếu nại khách hàng", r"Customer Service", r"Customer Success",
+    r"Key Account", r"Account Management", r"Lead Generation",
+
+    # Marketing / truyền thông / nội dung
+    r"Content Marketing", r"Content Writing", r"Copywriting", r"Social Media",
+    r"Social Media Marketing", r"Email Marketing", r"Influencer Marketing",
+    r"Brand Management", r"Branding", r"\bPR\b", r"Quan hệ công chúng",
+    r"Truyền thông nội bộ", r"Event Management", r"Tổ chức sự kiện",
+    r"Nghiên cứu thị trường", r"Phân tích thị trường", r"Google Analytics",
+    r"Google Search Console", r"Google Tag Manager", r"TikTok Ads", r"Zalo Ads",
+    r"Quảng cáo trực tuyến", r"Quản trị fanpage", r"WordPress", r"Canva",
+    r"Adobe InDesign", r"Lightroom", r"DaVinci Resolve", r"CapCut",
+
+    # Tài chính / kế toán / ngân hàng / bảo hiểm
+    r"Kế toán tổng hợp", r"Kế toán thuế", r"Kế toán công nợ", r"Kế toán giá thành",
+    r"Kế toán quản trị", r"Lập báo cáo tài chính", r"Phân tích báo cáo tài chính",
+    r"Lập ngân sách", r"Dự báo tài chính", r"Quản lý dòng tiền", r"Quản lý công nợ",
+    r"Hạch toán", r"Đối soát", r"Quyết toán thuế", r"Khai báo thuế",
+    r"Chuẩn mực kế toán", r"IFRS", r"VAS", r"Kiểm soát nội bộ", r"Kiểm toán nội bộ",
+    r"Quản trị rủi ro", r"Thẩm định tín dụng", r"Phân tích tín dụng", r"Tín dụng",
+    r"Thanh toán quốc tế", r"Treasury", r"MISA", r"FAST Accounting", r"QuickBooks",
+    r"Mức phí bảo hiểm", r"Thẩm định bảo hiểm", r"Giải quyết bồi thường",
+
+    # Nhân sự / hành chính / pháp chế / tư vấn
+    r"Tuyển dụng nhân sự", r"Săn đầu người", r"Onboarding", r"Đào tạo nhân sự",
+    r"Đánh giá hiệu suất", r"Quản lý hiệu suất", r"Hoạch định nhân sự",
+    r"Quan hệ lao động", r"Lương thưởng", r"Tính lương", r"Bảo hiểm xã hội",
+    r"Quản lý hồ sơ nhân sự", r"Văn hóa doanh nghiệp", r"Gắn kết nhân viên",
+    r"Hành chính văn phòng", r"Quản lý văn phòng", r"Quản lý tài sản",
+    r"Soạn thảo văn bản", r"Quản lý con dấu", r"Quản lý văn thư",
+    r"Soạn thảo hợp đồng", r"Rà soát hợp đồng", r"Tư vấn pháp lý", r"Tuân thủ pháp luật",
+    r"Sở hữu trí tuệ", r"Giải quyết tranh chấp", r"Giấy phép doanh nghiệp",
+
+    # Logistics / vận tải / chuỗi cung ứng
+    r"Quản lý kho", r"Kiểm soát tồn kho", r"Quản lý tồn kho", r"Kiểm kê",
+    r"Lập kế hoạch cung ứng", r"Lập kế hoạch sản xuất", r"Mua hàng", r"Thu mua",
+    r"Quản lý nhà cung cấp", r"Đàm phán mua hàng", r"Sourcing", r"Procurement",
+    r"Điều phối vận tải", r"Điều phối giao nhận", r"Vận hành kho", r"WMS",
+    r"TMS", r"Xuất nhập khẩu", r"Khai báo hải quan", r"Thông quan",
+    r"Incoterms", r"Vận đơn", r"Freight Forwarding", r"Supply Chain Planning",
+
+    # Sản xuất / cơ khí / lao động kỹ thuật
+    r"Vận hành máy", r"Bảo trì máy móc", r"Bảo trì phòng ngừa", r"Sửa chữa thiết bị",
+    r"Gia công cơ khí", r"\bCNC\b", r"\bTiện\b", r"\bPhay\b", r"\bHàn\b", r"Đọc bản vẽ kỹ thuật",
+    r"Dung sai kỹ thuật", r"Lập trình CNC", r"CAM", r"SolidWorks", r"CATIA",
+    r"Lean Manufacturing", r"5S", r"Kaizen", r"Six Sigma", r"OEE",
+    r"Kiểm soát chất lượng", r"Đảm bảo chất lượng", r"\bQC\b", r"\bQA\b", r"ISO 9001",
+    r"HACCP", r"GMP", r"An toàn lao động", r"PCCC",
+
+    # Xây dựng / kiến trúc / bất động sản
+    r"Giám sát thi công", r"Quản lý dự án xây dựng", r"Bóc tách khối lượng",
+    r"Lập dự toán", r"Thanh quyết toán công trình", r"Đấu thầu", r"Hồ sơ dự thầu",
+    r"Hồ sơ nghiệm thu", r"Thiết kế kiến trúc", r"Thiết kế nội thất", r"Thiết kế kết cấu",
+    r"Thiết kế MEP", r"Triển khai bản vẽ", r"Shop drawing", r"MS Project",
+    r"Primavera", r"Quản lý bất động sản", r"Tư vấn bất động sản", r"Môi giới bất động sản",
+
+    # Điện / điện tử / viễn thông
+    r"Điện công nghiệp", r"Điện dân dụng", r"Bảo trì điện", r"Tủ điện",
+    r"Biến tần", r"Servo", r"Cảm biến", r"Khí nén", r"Thủy lực",
+    r"Lập trình PLC", r"Lập trình HMI", r"SCADA", r"Siemens", r"Mitsubishi",
+    r"Altium Designer", r"Thiết kế PCB", r"Mạch điện tử", r"Embedded C",
+    r"Viễn thông", r"RF", r"Fiber Optic", r"Cáp quang", r"CCTV",
+
+    # Du lịch / nhà hàng / khách sạn / dịch vụ
+    r"Nghiệp vụ lễ tân", r"Nghiệp vụ buồng phòng", r"Nghiệp vụ nhà hàng",
+    r"Quản lý khách sạn", r"Quản lý nhà hàng", r"Đặt phòng", r"Reservation",
+    r"Opera PMS", r"Quản lý doanh thu khách sạn", r"Hướng dẫn du lịch",
+    r"Điều hành tour", r"Thiết kế tour", r"Kỹ thuật chế biến món ăn",
+    r"An toàn vệ sinh thực phẩm", r"Barista", r"Bartender", r"Thu ngân",
+
+    # Giáo dục / y tế / nông nghiệp / ngôn ngữ
+    r"Sư phạm", r"Thiết kế bài giảng", r"Quản lý lớp học", r"Đánh giá học tập",
+    r"LMS", r"E-learning", r"Nghiên cứu khoa học", r"Phân tích thống kê",
+    r"Khám bệnh", r"Chẩn đoán", r"Điều dưỡng", r"Chăm sóc bệnh nhân",
+    r"Dược lâm sàng", r"Tư vấn dược", r"Xét nghiệm y học", r"Kiểm soát nhiễm khuẩn",
+    r"GCP", r"Quản lý trang trại", r"Kỹ thuật canh tác", r"Chăn nuôi",
+    r"Bảo vệ thực vật", r"Thú y", r"Quản lý môi trường", r"Xử lý nước thải",
+    r"An toàn môi trường", r"ESG", r"Năng lượng tái tạo", r"Điện mặt trời",
+    r"Biên dịch", r"Phiên dịch", r"Dịch thuật", r"CAT tools", r"Trados",
 ]
 
 _COMPILED_SKILL_PATTERNS: list[re.Pattern] = [
