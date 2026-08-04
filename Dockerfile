@@ -14,7 +14,11 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-CMD ["sh", "-c", \
-    "uvicorn src.api.main:app --host 0.0.0.0 --port 8000 & " \
-    "streamlit run src/frontend/app.py --server.port 8501 --server.address 0.0.0.0 & " \
-    "wait"]
+# Start both services using a shell script
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &' >> /start.sh && \
+    echo 'streamlit run src/frontend/app.py --server.port 8501 --server.address 0.0.0.0 &' >> /start.sh && \
+    echo 'wait' >> /start.sh && \
+    chmod +x /start.sh
+
+CMD ["/start.sh"]
