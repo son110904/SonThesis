@@ -21,7 +21,6 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .claude/
-data/
 models/
 *.csv
 *.db

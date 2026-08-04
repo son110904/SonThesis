@@ -14,5 +14,5 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-# Debug: print working dir + files first, then start
-CMD ["sh", "-c", "pwd && ls && echo '---START---' && streamlit run app.py --server.port ${PORT:-8501} --server.address 0.0.0.0"]
+# Railway exposes PORT (default 8080) publicly
+CMD streamlit run app.py --server.port $PORT --server.address 0.0.0.0
