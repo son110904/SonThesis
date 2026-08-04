@@ -15,8 +15,7 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Railway exposes PORT (default 8080) publicly.
-# FastAPI runs internal on 8000 (same container, no expose).
-# Streamlit runs on PORT so Railway can proxy it publicly.
+# FastAPI internal on 8000, Streamlit on PORT.
 RUN printf '#!/bin/sh\n' \
     'uvicorn src.api.main:app --host 127.0.0.1 --port 8000 &\n' \
     'streamlit run src/frontend/app.py --server.port $PORT --server.address 0.0.0.0\n' \
