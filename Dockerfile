@@ -14,11 +14,14 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-# Start both services using a shell script
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &' >> /start.sh && \
-    echo 'streamlit run src/frontend/app.py --server.port 8501 --server.address 0.0.0.0 &' >> /start.sh && \
-    echo 'wait' >> /start.sh && \
-    chmod +x /start.sh
+# Railway exposes PORT (default 8080) publicly.
+# FastAPI runs internal on 8000 (same container, no expose).
+# Streamlit runs on PORT so Railway can proxy it publicly.
+RUN printf '#!/bin/sh\n' \
+    'uvicorn src.api.main:app --host 127.0.0.1 --port 8000 &\n' \
+    'streamlit run src/frontend/app.py --server.port $PORT --server.address 0.0.0.0\n' \
+    > /start.sh && chmod +x /start.sh
+
+EXPOSE 8080
 
 CMD ["/start.sh"]
