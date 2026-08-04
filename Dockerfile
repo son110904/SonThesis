@@ -1,4 +1,4 @@
-# ShibaCV: FastAPI + Streamlit
+# ShibaCV: Streamlit only
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,13 +14,5 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-# Railway exposes PORT (default 8080) publicly.
-# FastAPI internal on 8000, Streamlit on PORT.
-RUN printf '#!/bin/sh\n' \
-    'uvicorn src.api.main:app --host 127.0.0.1 --port 8000 &\n' \
-    'streamlit run src/frontend/app.py --server.port $PORT --server.address 0.0.0.0\n' \
-    > /start.sh && chmod +x /start.sh
-
-EXPOSE 8080
-
-CMD ["/start.sh"]
+# Debug: print working dir + files first, then start
+CMD ["sh", "-c", "pwd && ls && echo '---START---' && streamlit run app.py --server.port ${PORT:-8501} --server.address 0.0.0.0"]
