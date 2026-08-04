@@ -49,7 +49,8 @@ _SYSTEM_PROMPT = (
     "ty cụ thể nào trong email. Luôn xưng hô chung chung, vd 'Kính gửi Bộ phận Tuyển "
     "dụng' hoặc 'Kính gửi Quý công ty'.\n"
     "7. Tìm TÊN THẬT của ứng viên trong 'Nội dung CV gốc' bên dưới (thường ở đầu CV, "
-    "phần tiêu đề/liên hệ) và dùng ĐÚNG tên đó ở tiêu đề email và chữ ký cuối thư. "
+    "phần tiêu đề/liên hệ) và dùng ĐÚNG tên đó ở chữ ký cuối thư. Tiêu đề email PHẢI "
+    "theo đúng mẫu: 'Ứng tuyển vị trí [Tên vị trí] - {tên ứng viên}'. "
     "TUYỆT ĐỐI KHÔNG bịa ra một cái tên (vd không dùng tên ví dụ như 'Nguyễn Văn A' "
     "nếu đó không phải tên thật trong CV). Nếu CV không có tên rõ ràng, bỏ qua tên "
     "trong chữ ký (dùng 'Ứng viên' hoặc để trống) thay vì đoán bừa.\n"
@@ -58,7 +59,7 @@ _SYSTEM_PROMPT = (
 
 _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
 {
-  "subject": "string — tiêu đề email, vd 'Application for {occupation} - {ten_ung_vien}'",
+  "subject": "string — tiêu đề email theo đúng mẫu 'Ứng tuyển vị trí {occupation} - {tên ứng viên}'",
   "body": "string — toàn bộ nội dung email (bao gồm lời chào & chữ ký), CÓ xuống dòng \\n giữa các đoạn",
   "matching_highlights": ["string — điểm mạnh trong CV khớp nhất với vị trí, CHỈ từ kỹ năng/kinh nghiệm/dự án có thật trong CV"]
 }"""

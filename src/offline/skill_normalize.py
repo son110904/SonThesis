@@ -30,6 +30,309 @@ import re
 from collections import Counter
 from typing import Iterable, Mapping, Optional
 
+
+
+# ── Skill BLACKLIST theo domain ─────────────────────────────────────────────────
+# Blacklist ÁP DỤNG CHO TẤT CẢ ngành (skill không thuộc bất kỳ domain nào).
+# Đây là skill "chung" xuất hiện ở mọi nơi do noise extraction, không đặc trưng domain.
+# Áp dụng TRƯỚC khi dedupe, cho TẤT CẢ profile.
+SKILL_BLACKLIST_ALL: set[str] = {
+    "đam mê kiếm tiền",
+    "nhiệt huyết",
+    "nhiệt tình trong công việc",
+    "khả năng tự học",
+    "khả năng học hỏi",
+    "tinh thần làm việc nhóm",
+    "kỹ năng làm việc theo nhóm",
+    "kỹ năng làm việc nhóm tốt",
+    "phối hợp nhóm",
+    "bền bỉ",
+    "tư duy logic",
+    "proactive attitude",
+    "lãnh đạo",
+    "tổ chức",
+    "phản xạ tình huống",
+    "phần mềm văn phòng",
+    "sử dụng thành thạo các phần mềm office (word, excel, powerpoint)",
+    "thành thạo excel",
+    "vlookup",
+    "countif",
+    "sumif",
+    "google sheet",
+    "g-suite",
+    "microsoft 365",
+    "tìm kiếm khách hàng",
+    "xây dựng và duy trì mối quan hệ khách hàng",
+    "khả năng tư vấn khách hàng",
+    "sử dụng crm",
+    "đọc hiểu tài liệu bằng tiếng anh",
+    "documentation skills",
+    "tư duy chiến lược",
+    "kỹ năng phân tích",
+    "khả năng phân tích",
+    "phân tích",
+    "kỹ năng lắng nghe",
+    "kỹ năng viết tài liệu",
+}
+
+
+# ── Skill BLACKLIST chỉ cho ngành IT / phần mềm ──────────────────────────────
+# Những skill này thuộc domain KHÁC (cơ khí, sales, tài chính...) nên không liên
+# quan khi đánh giá ứng viên IT/software. Chỉ áp dụng khi profile thuộc nhóm IT.
+# Key: skill lowercase; Value: lý do.
+SKILL_BLACKLIST_IT_ONLY: dict[str, str] = {
+    # Cơ khí / gia công
+    "cnc": "gia công cơ khí",
+    "lập trình cnc": "gia công cơ khí",
+    "máy cnc": "gia công cơ khí",
+    "g-code": "gia công CNC",
+    "mastercam": "gia công CNC",
+    "cam": "máy tính hỗ trợ sản xuất (chuyên ngành cơ khí)",
+    "phay": "gia công cơ khí",
+    "tiện": "gia công cơ khí",
+    "cơ khí": "ngành cơ khí",
+    "gia công cơ khí": "ngành cơ khí",
+    "hàn": "ngành hàn",
+    "solidworks": "CAD cơ khí (SolidWorks ≠ software dev)",
+    "autocad": "CAD cơ khí (AutoCAD ≠ software dev)",
+    "nx": "CAD/CAM cơ khí",
+    # Viễn thông hạ tầng
+    "viễn thông": "hạ tầng viễn thông (≠ software)",
+    "voice": "voip/viễn thông",
+    "rf": "radio frequency engineering",
+    # Tài chính / kế toán
+    "kế toán": "ngành tài chính",
+    "kiểm toán": "ngành tài chính",
+    "tính lương": "ngành nhân sự/tài chính",
+    # Sales / kinh doanh
+    "chăm sóc khách hàng": "ngành dịch vụ (≠ dev)",
+    "kỹ năng bán hàng": "ngành sales",
+    "bán hàng b2b": "ngành sales",
+    "kinh nghiệm sales b2b": "ngành sales",
+    "kinh doanh phần mềm": "sales/pre-sales, không phải dev",
+    "phát triển kinh doanh": "ngành kinh doanh",
+    "telesales": "ngành telemarketing",
+    "báo giá": "bán hàng/kế toán",
+    "sourcing": "mua hàng/procurement",
+    # Marketing
+    "email marketing": "ngành marketing",
+    "nghiên cứu thị trường": "ngành marketing",
+    "phân tích thị trường": "ngành marketing",
+    # HR / nhân sự
+    "tuyển dụng": "ngành nhân sự",
+    "kỹ năng đào tạo": "ngành nhân sự",
+    # Y / giáo dục
+    "y tế": "ngành y",
+    "tương tác với trẻ em": "ngành giáo dục mầm non",
+    "giảng dạy": "ngành giáo dục",
+    # F&B / logistics
+    "quản lý nhà hàng": "ngành f&b",
+    "quản lý kho": "ngành logistics",
+    "quản lý sản xuất": "ngành sản xuất",
+    "kiểm kê": "ngành logistics/kho",
+    # Xây dựng
+    "bóc tách khối lượng": "ngành xây dựng",
+    "đọc hiểu bản vẽ kỹ thuật": "ngành cơ khí/xây dựng",
+    # Pháp lý
+    "luật": "ngành pháp lý",
+    # An toàn / HSE
+    "an toàn lao động": "ngành an toàn",
+    # Misc
+    "vas": "noise/ví dụ không phải skill",
+    "tiện ích": "chung chung",
+    "cctv": "an ninh/vật lý",
+    "quản lý tài sản": "ngành quản lý tài sản",
+    "tư vấn": "ngành tư vấn (chung)",
+    "quản lý chất lượng": "sản xuất/iso",
+    # IT support/hardware (không phải software dev)
+    "cài đặt máy tính": "it support/hardware",
+    "sửa chữa thiết bị": "it support/hardware",
+    "phần cứng máy tính": "it support/hardware",
+    "phần cứng": "it support/hardware",
+    "thiết bị ngoại vi": "it support",
+    "nas": "storage (it ops)",
+    "vmware": "virtualization (it ops)",
+    "microsoft hyper-v": "virtualization (it ops)",
+    "hyper-v": "virtualization it ops",
+    "active directory": "it ops/ad (sysadmin, không phải dev)",
+    "exchange": "mail server (it ops)",
+    "quản lý hạ tầng mạng": "it ops networking",
+    "quản lý mạng nội bộ kết nối data center": "it ops networking",
+    "giám sát hệ thống": "it ops monitoring",
+    "cài đặt cấu hình mail server": "it ops mail",
+    "quản trị hệ điều hành server": "it ops server admin",
+    "backup restore": "it ops",
+    "bảo mật hệ thống": "it ops security (khác security engineer)",
+    "san or storage systems": "it ops storage",
+}
+
+
+def is_blacklisted(skill: str, domain_key: str = "") -> bool:
+    """
+    Kiểm tra skill có bị blacklist không.
+
+    Args:
+        skill: Tên skill thô.
+        domain_key: ASCII key của profile (vd "cong_nghe_thong_tin_ky_thuat_so").
+                   Dùng để quyết định blacklist IT-only có áp dụng không.
+
+    Returns:
+        True nếu skill bị blacklist (loại bỏ khỏi profile).
+    """
+    low = skill.lower()
+    # Luôn loại blacklist toàn ngành.
+    if low in SKILL_BLACKLIST_ALL:
+        return True
+    # Blacklist IT-only chỉ áp dụng cho profile thuộc nhóm CNTT.
+    if domain_key.startswith("cong_nghe_thong_tin_ky_thuat_so"):
+        if low in SKILL_BLACKLIST_IT_ONLY:
+            return True
+    return False
+
+
+# ── Lớp 0b: Skill con → Skill cha ─────────────────────────────────────────────
+# Khi candidate có skill CỤ THỂ (Python, Java…) và nghề yêu cầu NHÓM (Lập trình),
+# coi như match. Key: skill con (lowercase); Value: skill cha (canonical chuẩn).
+PARENT_SKILL_MAP: dict[str, str] = {
+    # Ngôn ngữ lập trình → Lập trình
+    "python": "Lập trình",
+    "java": "Lập trình",
+    "javascript": "Lập trình",
+    "typescript": "Lập trình",
+    "c": "Lập trình",
+    "c++": "Lập trình",
+    "c#": "Lập trình",
+    "go": "Lập trình",
+    "rust": "Lập trình",
+    "kotlin": "Lập trình",
+    "swift": "Lập trình",
+    "php": "Lập trình",
+    "ruby": "Lập trình",
+    "r": "Lập trình",
+    "scala": "Lập trình",
+    "perl": "Lập trình",
+    "matlab": "Lập trình",
+    "lua": "Lập trình",
+    "objective-c": "Lập trình",
+    "dart": "Lập trình",
+    "elixir": "Lập trình",
+    "clojure": "Lập trình",
+    "haskell": "Lập trình",
+    "f#": "Lập trình",
+    # Scripting → Lập trình
+    "bash": "Lập trình",
+    "shell": "Lập trình",
+    "powershell": "Lập trình",
+    "perl": "Lập trình",
+    "groovy": "Lập trình",
+    "vba": "Lập trình",
+    "batch": "Lập trình",
+    "lua": "Lập trình",
+    # Web development skills → Các kỹ năng web
+    "html": "HTML/CSS",
+    "css": "HTML/CSS",
+    "sass": "HTML/CSS",
+    "scss": "HTML/CSS",
+    "less": "HTML/CSS",
+    "tailwind": "HTML/CSS",
+    "bootstrap": "HTML/CSS",
+    "react.js": "Lập trình Web",
+    "reactjs": "Lập trình Web",
+    "vue.js": "Lập trình Web",
+    "vuejs": "Lập trình Web",
+    "angular": "Lập trình Web",
+    "next.js": "Lập trình Web",
+    "nuxt.js": "Lập trình Web",
+    "svelte": "Lập trình Web",
+    "jquery": "Lập trình Web",
+    "ajax": "Lập trình Web",
+    "rest api": "Lập trình Web",
+    "graphql": "Lập trình Web",
+    # Backend frameworks
+    "node.js": "Lập trình Web",
+    "express.js": "Lập trình Web",
+    "fastapi": "Lập trình Web",
+    "django": "Lập trình Web",
+    "flask": "Lập trình Web",
+    "spring": "Lập trình Web",
+    "spring boot": "Lập trình Web",
+    "laravel": "Lập trình Web",
+    "rails": "Lập trình Web",
+    "ruby on rails": "Lập trình Web",
+    # Database
+    "sql": "Cơ sở dữ liệu",
+    "mysql": "Cơ sở dữ liệu",
+    "postgresql": "Cơ sở dữ liệu",
+    "postgres": "Cơ sở dữ liệu",
+    "mongodb": "Cơ sở dữ liệu",
+    "redis": "Cơ sở dữ liệu",
+    "elasticsearch": "Cơ sở dữ liệu",
+    "cassandra": "Cơ sở dữ liệu",
+    "dynamodb": "Cơ sở dữ liệu",
+    "mariadb": "Cơ sở dữ liệu",
+    "oracle": "Cơ sở dữ liệu",
+    "sqlite": "Cơ sở dữ liệu",
+    # DevOps & Cloud
+    "docker": "DevOps",
+    "kubernetes": "DevOps",
+    "k8s": "DevOps",
+    "jenkins": "DevOps",
+    "gitlab ci": "DevOps",
+    "github actions": "DevOps",
+    "ci/cd": "DevOps",
+    "terraform": "DevOps",
+    "ansible": "DevOps",
+    "puppet": "DevOps",
+    "chef": "DevOps",
+    "aws": "Cloud Computing",
+    "azure": "Cloud Computing",
+    "gcp": "Cloud Computing",
+    "google cloud": "Cloud Computing",
+    "heroku": "Cloud Computing",
+    "docker compose": "DevOps",
+    # Data & AI
+    "pandas": "Phân tích dữ liệu",
+    "numpy": "Phân tích dữ liệu",
+    "scipy": "Phân tích dữ liệu",
+    "jupyter": "Phân tích dữ liệu",
+    "tableau": "Phân tích dữ liệu",
+    "power bi": "Phân tích dữ liệu",
+    "powerbi": "Phân tích dữ liệu",
+    "excel": "Phân tích dữ liệu",
+    "tensorflow": "Machine Learning",
+    "pytorch": "Machine Learning",
+    "keras": "Machine Learning",
+    "scikit-learn": "Machine Learning",
+    "sklearn": "Machine Learning",
+    "opencv": "Machine Learning",
+    "spacy": "NLP",
+    "nltk": "NLP",
+    "hugging face": "NLP",
+    "langchain": "NLP",
+    # Tools & Platforms
+    "git": "Quản lý mã nguồn",
+    "github": "Quản lý mã nguồn",
+    "gitlab": "Quản lý mã nguồn",
+    "bitbucket": "Quản lý mã nguồn",
+    "jira": "Quản lý dự án",
+    "confluence": "Quản lý dự án",
+    "trello": "Quản lý dự án",
+    "slack": "Quản lý dự án",
+    "figma": "Thiết kế",
+    "sketch": "Thiết kế",
+    "adobe xd": "Thiết kế",
+    "photoshop": "Thiết kế",
+    "illustrator": "Thiết kế",
+    "canva": "Thiết kế",
+    # Security
+    "penetration testing": "An ninh mạng",
+    "ethical hacking": "An ninh mạng",
+    "metasploit": "An ninh mạng",
+    "burp suite": "An ninh mạng",
+    "owasp": "An ninh mạng",
+}
+
+
 # ── Lớp 1: Alias cứng cho lỗi chính tả / đồng nghĩa ────────────────────────────
 # Key đã lowercase + strip. Value là display chuẩn (giữ nguyên hoa/thường mong muốn).
 ALIAS_MAP: dict[str, str] = {

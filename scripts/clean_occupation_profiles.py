@@ -1,15 +1,17 @@
 """
-clean_occupation_profiles.py – Dọn biến thể skill trùng trong 16 profile có sẵn.
+clean_occupation_profiles.py – Dọn biến thể skill + lọc cross-domain noise.
 
-Xử lý "Lỗ hổng chất lượng data": gộp 'REST API'/'REST API API'/'REST API APIs',
-'Node.js'/'Node.JavaScript', 'erp'/'erP'/'ERP', và các biến thể hoa/thường
-tiếng Việt ('Kế toán'/'kế toán'/'Kế Toán') về một entry duy nhất.
+Xử lý hai vấn đề:
+    1. Biến thể trùng: gộp 'REST API'/'REST API API', 'Node.js'/'Node.JavaScript',
+       'erp'/'erP'/'ERP', hoa/thường tiếng Việt về một entry duy nhất.
+    2. Cross-domain noise: loại skill không liên quan domain (CNTT/software engineer
+       không cần "Chăm sóc khách hàng", "CNC", "Kế toán", "Telesales"...).
+       Blacklist nằm trong SKILL_BLACKLIST (skill_normalize.py).
 
 Cách làm:
     1. Backup toàn bộ profile sang data/occupation_profiles_backup/ (1 lần).
-    2. Học display chuẩn từ TẦN SUẤT xuất hiện trên cả 16 profile (data-driven).
-    3. Với mỗi profile: dedupe core_skills & optional_skills (giữ weight lớn nhất),
-       gỡ skill đã nằm trong core ra khỏi optional, cập nhật _meta đếm lại.
+    2. Học display chuẩn từ TẦN SUẤT xuất hiện trên corpus (data-driven).
+    3. Với mỗi profile: lọc blacklist → dedupe core/optional → gỡ core khỏi optional.
     4. Ghi đè file (KHÔNG đụng `embedding`).
 
 LƯU Ý: core_skills đổi → văn bản embed đổi nhẹ. Sau khi chạy script này nên chạy
@@ -30,7 +32,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.config import OCCUPATION_PROFILES_DIR
-from src.offline.skill_normalize import build_display_preference, dedupe_weighted_skills
+from src.offline.skill_normalize import (
+    is_blacklisted,
+    build_display_preference,
+    canonicalize_skill,
+    dedupe_weighted_skills,
+)
 
 
 def _load_profiles(profiles_dir: Path) -> dict[Path, dict]:
@@ -40,13 +47,18 @@ def _load_profiles(profiles_dir: Path) -> dict[Path, dict]:
     }
 
 
-def clean_profile(profile: dict, display_pref: dict[str, str]) -> tuple[dict, dict]:
+def clean_profile(profile: dict, display_pref: dict[str, str], domain_key: str = "") -> tuple[dict, dict]:
     """
-    Dedupe core/optional của 1 profile. Trả (profile_đã_sửa, thống_kê).
+    Lọc blacklist → dedupe core/optional của 1 profile. Trả (profile_đã_sửa, thống_kê).
     """
-    core_raw = profile.get("core_skills", {})
-    opt_raw = profile.get("optional_skills", {})
+    core_orig = profile.get("core_skills", {})
+    opt_orig = profile.get("optional_skills", {})
 
+    # 1. Lọc blacklist (giữ weight, không thay đổi trọng số).
+    core_raw = {k: v for k, v in core_orig.items() if not is_blacklisted(k, domain_key)}
+    opt_raw = {k: v for k, v in opt_orig.items() if not is_blacklisted(k, domain_key)}
+
+    # 2. Dedup
     core = dedupe_weighted_skills(core_raw, display_pref, merge="max")
     opt = dedupe_weighted_skills(opt_raw, display_pref, merge="max")
 
@@ -55,8 +67,9 @@ def clean_profile(profile: dict, display_pref: dict[str, str]) -> tuple[dict, di
     opt = {k: v for k, v in opt.items() if k.lower() not in core_lower}
 
     stats = {
-        "core_before": len(core_raw), "core_after": len(core),
-        "opt_before": len(opt_raw), "opt_after": len(opt),
+        "core_before": len(core_orig), "core_after": len(core),
+        "opt_before": len(opt_orig), "opt_after": len(opt),
+        "blacklist_removed": (len(core_orig) - len(core_raw)) + (len(opt_orig) - len(opt_raw)),
     }
 
     profile["core_skills"] = core
@@ -69,6 +82,10 @@ def clean_profile(profile: dict, display_pref: dict[str, str]) -> tuple[dict, di
 
 
 def main() -> None:
+    # Windows CP1252 không encode được tiếng Việt → buộc stdout về UTF-8.
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Chỉ in, không ghi file")
     args = parser.parse_args()
@@ -93,13 +110,19 @@ def main() -> None:
 
     total_removed = 0
     for f, d in raw.items():
-        cleaned, st = clean_profile(d, display_pref)
+        cleaned, st = clean_profile(d, display_pref, f.stem)
         removed = (st["core_before"] + st["opt_before"]) - (st["core_after"] + st["opt_after"])
         total_removed += removed
-        flag = "" if removed == 0 else f"  (-{removed} biến thể trùng)"
+        bl = st.get("blacklist_removed", 0)
+        flags = []
+        if removed > 0:
+            flags.append(f"-{removed} trùng")
+        if bl > 0:
+            flags.append(f"-{bl} blacklist")
+        flag_str = "  (" + ", ".join(flags) + ")" if flags else ""
         print(
             f"  {f.name:55} core {st['core_before']:>3}->{st['core_after']:<3} "
-            f"opt {st['opt_before']:>3}->{st['opt_after']:<3}{flag}"
+            f"opt {st['opt_before']:>3}->{st['opt_after']:<3}{flag_str}"
         )
         if not args.dry_run:
             json.dump(cleaned, open(f, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

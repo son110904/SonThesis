@@ -855,6 +855,12 @@ ul[role="listbox"] li[role="option"]:hover {{
 .rec-chips.rc-missing {{ margin-top:0.5rem; }}
 .rec-chips .rc-lbl {{ font-size:0.72rem; font-weight:700; color:var(--muted); margin-right:0.15rem; }}
 
+/* Cột Top-3: buộc 3 card cao BẰNG NHAU bằng flex stretch.
+   Streamlit mặc định không kéo column cao theo nhau → card ngắn dễ bị "lên xuống". */
+[data-testid="column"] {{ display:flex; flex-direction:column; }}
+[data-testid="column"] > div {{ flex:1 1 auto; display:flex; flex-direction:column; }}
+[data-testid="column"] .rec-card {{ flex:1 1 auto; }}
+
 /* Reduced-motion: reveal all animated redesign elements statically */
 @media (prefers-reduced-motion: reduce) {{
   .hero-badge .spark, .ws-shiba, .ws-chip, .ws-ring, .step-item.active .step-dot,

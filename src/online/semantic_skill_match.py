@@ -1,18 +1,17 @@
 """
 semantic_skill_match.py – So khớp kỹ năng theo NGỮ NGHĨA (Lỗ hổng 5).
 
-Vấn đề của exact-string match (weighted_matcher / skill_gap bản cũ):
-    Chỉ chuẩn hóa lowercase + strip rồi so khớp tuyệt đối, nên:
-        "Học máy"     ≠ "Machine Learning"   (cùng nghĩa, khác ngôn ngữ)
-        "Python developer" ≠ "Python"         (cùng lõi, khác cụm)
-        "lập trình web"    ≠ "lập trình"
-    → bỏ sót nhiều khớp đúng, kéo weighted_skill_score xuống thấp giả tạo.
+Ba tầng so khớp, áp dụng theo thứ tự ưu tiên:
 
-Giải pháp ở đây: dùng CHÍNH embedding model đã fine-tune để đo cosine similarity
-giữa từng skill của nghề và từng skill ứng viên. Một skill nghề coi là "matched"
-nếu có ít nhất một skill ứng viên:
-    - trùng tuyệt đối (sau canonicalize) → sim = 1.0, hoặc
-    - cosine similarity ≥ SKILL_MATCH_THRESHOLD.
+  1. Exact match (canonicalize)      → sim = 1.0
+  2. Parent-skill match (PARENT_SKILL_MAP) → sim = 0.95
+     VD: nghề yêu cầu "Lập trình", candidate có Python/Java/C++
+  3. Semantic match (gte embedding)  → sim = cosine
+
+Vấn đề cũ của exact-string match:
+    "Học máy"     ≠ "Machine Learning"   (cùng nghĩa, khác ngôn ngữ)
+    "Python developer" ≠ "Python"         (cùng lõi, khác cụm)
+    "Lập trình"   ≠ "Python"            (nhóm cha ≠ ngôn ngữ cụ thể)
 
 Kết quả (SkillMatchResult) được DÙNG CHUNG cho cả Bước 8 (weighted score) và
 Bước 10 (skill gap) để khỏi nhúng embedding hai lần.
@@ -27,7 +26,7 @@ from functools import lru_cache
 import numpy as np
 
 from src.config import SKILL_MATCH_MODE, SKILL_MATCH_THRESHOLD
-from src.offline.skill_normalize import canonicalize_skill
+from src.offline.skill_normalize import PARENT_SKILL_MAP, canonicalize_skill
 
 logger = logging.getLogger(__name__)
 
@@ -77,16 +76,47 @@ def _build_exact_match_result(
 ) -> SkillMatchResult:
     """Tạo kết quả khớp chính xác sau khi chuẩn hóa tên skill."""
     candidate_lookup = {_normalize(s): s for s in candidate_skills}
+
+    # Xây reverse map: parent → set(children) để match "nhóm cha"
+    parent_to_children: dict[str, set[str]] = {}
+    for child, parent in PARENT_SKILL_MAP.items():
+        parent_to_children.setdefault(parent.lower(), set()).add(child)
+
+    # Với mỗi skill ứng viên, ghi nhận các parent mà nó thuộc về
+    candidate_parents: dict[str, set[str]] = {}  # parent → set(children ứng viên)
+    for skill in candidate_skills:
+        canon = _normalize(skill)
+        for child, parent in PARENT_SKILL_MAP.items():
+            if _normalize(child) == canon:
+                p = parent.lower()
+                candidate_parents.setdefault(p, set()).add(canon)
+
     res = SkillMatchResult(mode_used="exact")
 
     for occupation_skill in occupation_skills:
         canonical_key = _normalize(occupation_skill)
+
+        # ① Exact match
         if canonical_key in candidate_lookup:
             res.matched[occupation_skill] = candidate_lookup[canonical_key]
             res.sims[occupation_skill] = 1.0
-        else:
-            res.unmatched.append(occupation_skill)
-            res.sims[occupation_skill] = 0.0
+            continue
+
+        # ② Parent skill match: nghề yêu cầu "Lập trình", candidate có Python/Java/C…
+        occ_lower = canonical_key.lower()
+        if occ_lower in parent_to_children and occ_lower in candidate_parents:
+            # Trả về skill con đầu tiên của candidate làm bằng chứng
+            matched_child = next(iter(candidate_parents[occ_lower]))
+            # Tìm display name gốc của child đó
+            matched_display = next(
+                (s for s in candidate_skills if _normalize(s) == matched_child), matched_child
+            )
+            res.matched[occupation_skill] = matched_display
+            res.sims[occupation_skill] = 0.95
+            continue
+
+        res.unmatched.append(occupation_skill)
+        res.sims[occupation_skill] = 0.0
 
     return res
 
@@ -97,20 +127,43 @@ def _pick_best_candidate_match(
     candidate_lookup: dict[str, str],
     similarity_row: np.ndarray,
     threshold: float,
+    parent_to_children: dict[str, set[str]] | None = None,
+    candidate_parents: dict[str, set[str]] | None = None,
 ) -> tuple[str | None, float]:
-    """Chọn candidate phù hợp nhất bằng hai tầng: exact trước, semantic sau."""
+    """Chọn candidate phù hợp nhất: exact → semantic → parent-skill fallback."""
     canonical_key = _normalize(occupation_skill)
     if canonical_key in candidate_lookup:
         return candidate_lookup[canonical_key], 1.0
 
     if similarity_row.size == 0:
+        # Fallback parent match
+        if parent_to_children and candidate_parents:
+            occ_lower = canonical_key.lower()
+            if occ_lower in parent_to_children and occ_lower in candidate_parents:
+                matched_child = next(iter(candidate_parents[occ_lower]))
+                matched_display = next(
+                    (s for s in candidate_skills if _normalize(s) == matched_child), matched_child
+                )
+                return matched_display, 0.95
         return None, 0.0
 
     best_index = int(np.argmax(similarity_row))
     best_similarity = float(similarity_row[best_index])
+
     if best_similarity >= threshold:
         return candidate_skills[best_index], best_similarity
-    return None, best_similarity
+
+    # Semantic thấp hơn ngưỡng → thử parent skill match
+    if parent_to_children and candidate_parents:
+        occ_lower = canonical_key.lower()
+        if occ_lower in parent_to_children and occ_lower in candidate_parents:
+            matched_child = next(iter(candidate_parents[occ_lower]))
+            matched_display = next(
+                (s for s in candidate_skills if _normalize(s) == matched_child), matched_child
+            )
+            return matched_display, 0.95
+
+    return candidate_skills[best_index], best_similarity
 
 
 def _semantic_match(
@@ -122,6 +175,19 @@ def _semantic_match(
     """Dùng embedding để so khớp skill nghề ↔ ứng viên khi exact match không đủ."""
     occupation_canon = [canonicalize_skill(s) for s in occupation_skills]
     candidate_canon = [canonicalize_skill(s) for s in candidate_skills]
+
+    # Xây parent maps một lần (giống _build_exact_match_result)
+    parent_to_children: dict[str, set[str]] = {}
+    for child, parent in PARENT_SKILL_MAP.items():
+        parent_to_children.setdefault(parent.lower(), set()).add(child.lower())
+
+    candidate_parents: dict[str, set[str]] = {}
+    for skill in candidate_skills:
+        canon = _normalize(skill)
+        for child, parent in PARENT_SKILL_MAP.items():
+            if _normalize(child) == canon:
+                p = parent.lower()
+                candidate_parents.setdefault(p, set()).add(canon)
 
     try:
         occupation_embeddings = model.encode(
@@ -151,6 +217,8 @@ def _semantic_match(
             candidate_lookup=candidate_lookup,
             similarity_row=similarity_matrix[index],
             threshold=threshold,
+            parent_to_children=parent_to_children,
+            candidate_parents=candidate_parents,
         )
         res.sims[occupation_skill] = round(similarity, 4)
         if matched_skill is not None:
@@ -171,10 +239,13 @@ def match_skills(
     """
     So khớp danh sách skill nghề với skill ứng viên.
 
-    Luồng dễ hiểu:
-    1. Thử khớp chính xác trước (đã chuẩn hóa tên).
-    2. Nếu bật semantic và chưa khớp được, dùng embedding để đo mức độ tương tự.
-    3. Nếu model không sẵn, tự fallback về exact match.
+    Ba tầng ưu tiên:
+    1. Exact match (canonicalize) → sim=1.0
+    2. Parent-skill match → sim=0.95
+    3. Semantic (gte embedding) → sim=cosine ≥ threshold
+
+    mode="exact" (mặc định): chạy 1+2, bỏ qua 3.
+    mode="semantic": chạy cả 3 theo thứ tự.
     """
     if not occupation_skills:
         return SkillMatchResult(mode_used=mode)
