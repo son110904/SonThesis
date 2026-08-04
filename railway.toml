@@ -1,0 +1,15 @@
+# Railway: auto-detect Dockerfile
+# Port mapping: Streamlit = 8501 (public), FastAPI = 8000 (internal)
+
+[deployment]
+region = "singapore"  # gần Việt Nam
+
+[[ports]]
+containerPort = 8501
+
+[env]
+# Streamlit settings
+STREAMLIT_SERVER_HEADLESS = "true"
+STREAMLIT_SERVER_RUN_ON_SAVE = "false"
+
+# OPENAI_API_KEY set in Railway dashboard (not in code)
