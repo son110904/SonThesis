@@ -22,8 +22,9 @@ safetensors>=0.4.0        # lưu/load model weights nhanh hơn
 tokenizers>=0.15.0        # HuggingFace fast tokenizer
 
 # ── Online Pipeline: Backend API ─────────────────────────────
-fastapi>=0.110.0          # REST API
-uvicorn[standard]>=0.27.0 # ASGI server
+fastapi>=0.110.0,<0.116.0        # REST API – pin max để tránh starlette conflict
+starlette>=0.38.0,<0.40.0       # pin tránh GZipResponder thread_minimum_size conflict
+uvicorn[standard]>=0.27.0,<0.32.0 # ASGI server – pin max cho tương thích
 python-multipart>=0.0.9   # upload file (multipart/form-data)
 pydantic>=2.0.0           # request/response schema
 
