@@ -92,8 +92,8 @@ MATCH_SCORE_COL: str = "ai_match_score"
 
 
 # ── Final Score: match_score = MATCH_ALPHA*semantic + MATCH_BETA*weighted ──
-MATCH_ALPHA: float = 0.8    # trọng số semantic similarity
-MATCH_BETA: float = 0.2     # trọng số weighted skill score
+MATCH_ALPHA: float = 0.5    # trọng số semantic similarity
+MATCH_BETA: float = 0.5     # trọng số weighted skill score
 
 # ── Skill matching (Bước 8 & 10) ────────────────────────────────────────────
 # "exact" (MẶC ĐỊNH): khớp chuỗi sau canonicalize + SYNONYM_MAP song ngữ →
