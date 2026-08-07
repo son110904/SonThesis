@@ -6,7 +6,6 @@ import html
 from datetime import datetime
 
 from src.frontend.components import (
-    render_match_gauge,
     render_metric_card,
     render_cv_review,
     render_cv_improvement,
@@ -15,14 +14,6 @@ from src.frontend.components import (
 )
 from src.frontend.utils.api_client import APIError, generate_application_email
 from src.frontend.utils.styling import img_tag, render_footer
-
-
-def _verdict(pct: float) -> tuple[str, str]:
-    if pct >= 70:
-        return "Rất phù hợp!", "Shiba AI nhận thấy hồ sơ của bạn rất ấn tượng và có sự tương đồng cao với yêu cầu tuyển dụng. Đừng ngần ngại nộp đơn ngay!"
-    if pct >= 40:
-        return "Khá phù hợp", "Hồ sơ có tiềm năng nhưng cần bổ sung thêm một số kỹ năng quan trọng để tăng cơ hội được chọn."
-    return "Cần cải thiện thêm", "Hồ sơ chưa đáp ứng đủ yêu cầu. Tham khảo phần AI CV Review để định hướng phát triển phù hợp."
 
 
 def render_result() -> None:
@@ -34,9 +25,6 @@ def render_result() -> None:
         st.rerun()
         return
 
-    match = result["match_score"]
-    pct = match * 100
-    verdict_label, verdict_desc = _verdict(pct)
     now_str = datetime.now().strftime("%I:%M %p, %d/%m/%Y")
 
     # ── Header ───────────────────────────────────────────────────────────────
@@ -47,55 +35,35 @@ def render_result() -> None:
             <div class="eyebrow">Bước 4 · Báo cáo chi tiết</div>
             <div class="results-title">Kết quả phân tích</div>
             <div class="results-sub">
-              Vị trí ứng tuyển: <strong style="color:var(--accent)">{html.escape(result['occupation_display'])}</strong>
+              Vị trí: <strong style="color:var(--accent)">{html.escape(result['occupation_display'])}</strong>
               &nbsp;•&nbsp; Phân tích lúc {now_str}
             </div>
             """,
             unsafe_allow_html=True,
         )
     with hdr_r:
-        # Nếu đến từ luồng gợi ý (có Top 3) → cho quay lại danh sách Top 3.
-        if st.session_state.get("recommendations"):
-            if st.button("← Quay lại Top 3", use_container_width=True):
-                st.session_state["view"] = "recommend"
-                st.rerun()
-        if st.button("← Phân tích CV khác", use_container_width=True):
-            for k in ("recommendations", "candidate_profile", "candidate_embedding",
-                      "result", "application_email"):
+        if st.button("← Quay lại", key="back_home", use_container_width=True):
+            for k in ("candidate_profile", "candidate_embedding", "result", "application_email"):
                 st.session_state.pop(k, None)
             st.session_state["view"] = "home"
             st.rerun()
 
     st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
-    # ── Row 1: điểm số + shiba ────────────────────────────────────────────────
-    score_col, shiba_col = st.columns([1, 1], gap="large")
-    with score_col:
-        render_match_gauge(match)
-        st.markdown(
-            f"""<div style="text-align:center;margin-top:0.5rem;display:flex;flex-direction:column;align-items:center">
-              <div class="score-verdict">{verdict_label}</div>
-              <div class="score-desc" style="margin-top:0.8rem;padding:1rem 1.2rem;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--surface),var(--surface-warm));box-shadow:var(--shadow-card),var(--inset-hi);text-align:center;max-width:300px">{verdict_desc}</div>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-    with shiba_col:
-        st.markdown(
-            img_tag(
-                "shiba_win_cut.png",
-                style="width:100%;max-width:250px;height:auto;display:block;margin:0 auto",
-            ).replace("<img ", '<img class="shiba-float" '),
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
-
-    # ── Row 1b: sub-metric cards (full width row, 2 cols) ─────────────────────
-    m1, m2 = st.columns(2, gap="medium")
+    # ── Row 1: 2 metric cards + shiba (3 cột) ─────────────────────────────────
+    m1, m2, shiba_col = st.columns([1, 1, 1], gap="medium")
     with m1:
         render_metric_card("Semantic Similarity", result["semantic_similarity_score"])
     with m2:
         render_metric_card("Weighted Skill Score", result["weighted_skill_score"])
+    with shiba_col:
+        st.markdown(
+            img_tag(
+                "shiba_win_cut.png",
+                style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto",
+            ).replace("<img ", '<img class="shiba-float" '),
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
@@ -123,7 +91,6 @@ def render_result() -> None:
                     email = generate_application_email(
                         candidate_profile=result.get("candidate_profile", {}),
                         occupation_key=result["occupation_key"],
-                        match_score=result["match_score"],
                         semantic_similarity_score=result["semantic_similarity_score"],
                         weighted_skill_score=result["weighted_skill_score"],
                         matched_skills=result.get("matched_skills", []),
@@ -141,18 +108,6 @@ def render_result() -> None:
                     "CV chưa đủ thông tin để soạn email cá nhân hóa cho vị trí này, "
                     "hoặc dịch vụ AI hiện không khả dụng."
                 )
-
-    # ── Hỗ trợ: đối chiếu kỹ năng (giải thích kết quả) ───────────────────────
-    with st.expander("🔎 Chi tiết đối chiếu kỹ năng (hỗ trợ giải thích)", expanded=False):
-        sk_l, sk_r = st.columns(2, gap="medium")
-        with sk_l:
-            st.markdown('<div class="skill-sub-label green">● KỸ NĂNG ĐÁP ỨNG</div>', unsafe_allow_html=True)
-            render_skill_badges(result.get("matched_skills", []), kind="matched",
-                                empty_text="Chưa khớp kỹ năng nào của nghề này.")
-        with sk_r:
-            st.markdown('<div class="skill-sub-label amber">● KỸ NĂNG CÒN THIẾU</div>', unsafe_allow_html=True)
-            render_skill_badges(result.get("missing_skills", []), kind="missing", max_items=24,
-                                empty_text="Tuyệt vời — không thiếu kỹ năng quan trọng nào.")
 
     # ── Hồ sơ trích xuất ─────────────────────────────────────────────────────
     profile = result.get("candidate_profile", {})

@@ -3,10 +3,14 @@
 from src.frontend.utils.api_client import (
     APIError,
     analyze_cv,
+    analyze_cv_saved,
+    compare_cv_with_jd_saved,
+    get_cv_info,
     get_occupations,
     health,
-    recommend_occupations,
-    review_occupation,
+    login,
+    register,
+    save_cv,
 )
 from src.frontend.utils.styling import inject_css, render_header, COLORS
 from src.frontend.utils.resources import (
@@ -20,10 +24,14 @@ from src.frontend.utils.resources import (
 __all__ = [
     "APIError",
     "analyze_cv",
+    "analyze_cv_saved",
+    "compare_cv_with_jd_saved",
+    "get_cv_info",
     "get_occupations",
     "health",
-    "recommend_occupations",
-    "review_occupation",
+    "login",
+    "register",
+    "save_cv",
     "inject_css",
     "render_header",
     "COLORS",

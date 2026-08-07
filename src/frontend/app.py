@@ -22,9 +22,11 @@ from src.frontend.utils import (
     start_background_warmup,
 )
 from src.frontend.pages import (
+    render_auth_page,
     render_home,
+    render_jd_comparison_page,
+    render_jd_result,
     render_landing,
-    render_recommend_page,
     render_result,
     render_scanning_page,
 )
@@ -60,14 +62,19 @@ def main() -> None:
         st.stop()
 
     view = st.session_state["view"]
-    if view == "result":
+    if view == "jd_result":
+        render_header()
+        render_jd_result()
+    elif view == "jd_comparison":
+        render_jd_comparison_page()
+    elif view == "result":
         render_header()
         render_result()
-    elif view == "recommend":
-        render_header()
-        render_recommend_page()
     elif view == "scanning":
         render_scanning_page()
+    elif view == "auth":
+        render_header()
+        render_auth_page()
     elif view == "home":
         render_header()
         render_home()

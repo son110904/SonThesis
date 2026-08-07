@@ -6,10 +6,20 @@ file data/occupation_profiles/*.json vẫn giữ embedding cũ (sinh bằng pret
 qua fallback NaN). Hai bên lệch không gian vector → điểm semantic sai. Script này
 re-embed TẠI CHỖ: giữ nguyên mọi field, chỉ thay `embedding` + cập nhật `_meta`.
 
-Chạy: python reembed_occupations.py   (3.14 CPU đủ nhanh cho 16 profile)
+Chạy: py -3.12 reembed_occupations.py
+
+⚠️ PHẢI dùng Python 3.12. Trên 3.14 + torch 2.12, embedder tự reset position_ids
+để khỏi crash nhưng embedding SUY GIẢM âm thầm — embedding sinh ra sẽ nằm ở
+"không gian" khác hẳn (đo được: cosine với bản đúng chỉ ~0.34), khiến MỌI điểm
+semantic về sau đều sai.
 """
 import sys, json, logging
 from pathlib import Path
+
+# Tên file/nghề có dấu tiếng Việt; console Windows mặc định cp1252 sẽ ném
+# UnicodeEncodeError giữa chừng — mà lúc đó JSON đã ghi được một phần, để lại KB
+# ở trạng thái nửa cũ nửa mới (lệch không gian vector). Ép UTF-8 cho stdout.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s – %(message)s")

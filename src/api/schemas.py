@@ -44,7 +44,7 @@ class AnalyzeResponse(BaseModel):
     occupation_key: str
     occupation_display: str
 
-    match_score: float = Field(..., ge=0, le=1)
+    # 2 chỉ số độc lập (đã bỏ match_score tổng hợp từ 2026-08).
     semantic_similarity_score: float = Field(..., ge=0, le=1)
     weighted_skill_score: float = Field(..., ge=0, le=1)
 
@@ -58,43 +58,11 @@ class AnalyzeResponse(BaseModel):
     cv_review: Optional[dict] = None
 
 
-class RecommendationItem(BaseModel):
-    """1 nghề trong Top-K gợi ý."""
-
-    occupation_key: str
-    occupation_display: str
-    match_score: float = Field(..., ge=0, le=1)
-    semantic_similarity_score: float = Field(..., ge=0, le=1)
-    weighted_skill_score: float = Field(..., ge=0, le=1)
-    # Giải thích "vì sao phù hợp" (deterministic, không LLM).
-    matched_skills: list[str] = []
-    missing_skills: list[str] = []
-    reason: str = ""
-
-
-class RecommendationResponse(BaseModel):
-    """Kết quả endpoint POST /recommend."""
-
-    recommendations: list[RecommendationItem]
-    candidate_profile: dict          # skills/experience/projects/education/raw_text/filename
-    candidate_embedding: list[float]  # tái dùng cho /review
-
-
-class ReviewRequest(BaseModel):
-    """Body endpoint POST /review (chọn 1 nghề từ Top-K, tái dùng profile + embedding)."""
-
-    candidate_profile: dict
-    candidate_embedding: list[float]
-    occupation: str
-    include_recommendation: bool = True
-
-
 class CVImprovementRequest(BaseModel):
     """Body endpoint POST /cv-improvement (tái dùng profile + điểm số đã tính)."""
 
     candidate_profile: dict
     occupation: str
-    match_score: float = Field(..., ge=0, le=1)
     semantic_similarity_score: float = Field(..., ge=0, le=1)
     weighted_skill_score: float = Field(..., ge=0, le=1)
     matched_skills: list[str] = []
@@ -106,7 +74,91 @@ class ApplicationEmailRequest(BaseModel):
 
     candidate_profile: dict
     occupation: str
-    match_score: float = Field(..., ge=0, le=1)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+    cv_review: Optional[dict] = None
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Authentication (đăng ký/đăng nhập + lưu CV tái sử dụng)
+# ══════════════════════════════════════════════════════════════════════════
+class RegisterRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+
+
+class CVInfoOut(BaseModel):
+    original_filename: str
+    uploaded_at: str
+
+
+class AnalyzeSavedRequest(BaseModel):
+    """Body endpoint POST /analyze-saved (dùng CV đã lưu của user, không upload lại)."""
+
+    user_id: int
+    occupation: str
+    include_recommendation: bool = True
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# JD Comparison (Chế độ 2 — so sánh trực tiếp CV ↔ JD cụ thể)
+# ══════════════════════════════════════════════════════════════════════════
+class JDComparisonResponse(BaseModel):
+    """Kết quả endpoint POST /compare-jd — so sánh CV với 1 JD cụ thể."""
+
+    # Thông tin JD (đã trích text)
+    jd_filename: str
+    jd_position: str = ""              # tên vị trí dự đoán (heuristic)
+    jd_skills: list[str] = []         # skill trích từ JD (regex)
+    jd_text_preview: str = ""         # ~500 ký tự đầu của JD
+
+    # 2 chỉ số độc lập (giống AnalyzeResponse nhưng không có occupation_key)
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    coverage_pct: float = Field(..., ge=0, le=1)  # matched/required (dễ hiểu cho user)
+
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+
+    candidate_profile: CandidateProfileOut
+    # AI Recommendation cho JD cụ thể (cùng schema với AI CV Review).
+    ai_recommendation: Optional[dict] = None
+    cv_review: Optional[dict] = None
+
+
+class JDCVImprovementRequest(BaseModel):
+    """Body endpoint POST /jd/cv-improvement (tái dùng profile + điểm số đã tính)."""
+
+    candidate_profile: dict
+    jd_position: str = ""
+    jd_skills: list[str] = []
+    semantic_similarity_score: float = Field(..., ge=0, le=1)
+    weighted_skill_score: float = Field(..., ge=0, le=1)
+    matched_skills: list[str] = []
+    missing_skills: list[str] = []
+
+
+class JDApplicationEmailRequest(BaseModel):
+    """Body endpoint POST /jd/application-email (chỉ gọi khi người dùng chủ động bấm nút)."""
+
+    candidate_profile: dict
+    jd_position: str = ""
+    jd_skills: list[str] = []
+    jd_text_preview: str = ""
     semantic_similarity_score: float = Field(..., ge=0, le=1)
     weighted_skill_score: float = Field(..., ge=0, le=1)
     matched_skills: list[str] = []

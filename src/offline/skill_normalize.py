@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from functools import lru_cache
 from typing import Iterable, Mapping, Optional
 
 
@@ -324,6 +325,16 @@ PARENT_SKILL_MAP: dict[str, str] = {
     "photoshop": "Thiết kế",
     "illustrator": "Thiết kế",
     "canva": "Thiết kế",
+    # Chứng chỉ ngoại ngữ → ngôn ngữ tương ứng.
+    # Chiều map là "con → cha": nghề yêu cầu "Tiếng Anh" (cha) mà ứng viên có
+    # IELTS (con) thì KHỚP (sim 0.95). Ngược lại nghề đòi đích danh IELTS mà
+    # ứng viên chỉ ghi "Tiếng Anh" thì KHÔNG khớp — đúng, vì không có bằng chứng.
+    "ielts": "Tiếng Anh",
+    "toeic": "Tiếng Anh",
+    "toefl": "Tiếng Anh",
+    "jlpt": "Tiếng Nhật",
+    "topik": "Tiếng Hàn",
+    "hsk": "Tiếng Trung",
     # Security
     "penetration testing": "An ninh mạng",
     "ethical hacking": "An ninh mạng",
@@ -336,6 +347,7 @@ PARENT_SKILL_MAP: dict[str, str] = {
 # ── Lớp 1: Alias cứng cho lỗi chính tả / đồng nghĩa ────────────────────────────
 # Key đã lowercase + strip. Value là display chuẩn (giữ nguyên hoa/thường mong muốn).
 ALIAS_MAP: dict[str, str] = {
+    # ─ JavaScript / Node ecosystem ─────────────────────────────────────────────
     "node.javascript": "Node.js",
     "nodejs": "Node.js",
     "node js": "Node.js",
@@ -344,21 +356,44 @@ ALIAS_MAP: dict[str, str] = {
     "react.javascript": "React.js",
     "vuejs": "Vue.js",
     "vue js": "Vue.js",
+    "nextjs": "Next.js",
+    "next.js": "Next.js",
+    "next.javascript": "Next.js",
+    "vue.javascript": "Vue.js",
+    "nuxtjs": "Nuxt.js",
+    "nuxt.js": "Nuxt.js",
     "express.javascript": "Express.js",
     "expressjs": "Express.js",
+    "express js": "Express.js",
+    # ─ API / Web ────────────────────────────────────────────────────────────────
     "rest api api": "REST API",
     "rest api apis": "REST API",
     "rest apis": "REST API",
     "restful api": "REST API",
     "restful apis": "REST API",
-    "ci cd": "CI/CD",
+    "rest api services": "REST API",
+    # ─ Python / Data / ML ───────────────────────────────────────────────────────
+    "pytorch lightning": "PyTorch",
+    "pytorch-lightning": "PyTorch",
+    "torch": "PyTorch",
+    "tensorflow 2": "TensorFlow",
+    "tensorflow 2.0": "TensorFlow",
+    "sklearn": "scikit-learn",
+    "scikit learn": "scikit-learn",
+    "sci-kit learn": "scikit-learn",
+    # ─ DevOps / Infra ──────────────────────────────────────────────────────────
+    "postgres": "PostgreSQL",
+    "k8s": "Kubernetes",
+    "cicd": "CI/CD",
+    # ─ Design / Other ───────────────────────────────────────────────────────────
     "ui ux": "UI/UX",
     "ux ui": "UI/UX",
     "ui/ux design": "UI/UX",
     "ms sql": "SQL Server",
     "ms sql server": "SQL Server",
-    "postgres": "PostgreSQL",
-    "k8s": "Kubernetes",
+    "bigquery": "BigQuery",
+    "snowflake": "Snowflake",
+    "databricks": "Databricks",
 }
 
 # ── Lớp 1b: Synonym song ngữ VI↔EN cho cùng một kỹ năng ────────────────────────
@@ -420,6 +455,22 @@ SYNONYM_MAP: dict[str, str] = {
     "quality management": "Quản lý chất lượng",
     "quản lý sản xuất": "Quản lý sản xuất",
     "production management": "Quản lý sản xuất",
+    # ─ Ngoại ngữ: tên tiếng Anh và tiếng Việt về CÙNG một canonical ──────────
+    "tiếng anh": "Tiếng Anh",
+    "english": "Tiếng Anh",
+    "tiếng nhật": "Tiếng Nhật",
+    "japanese": "Tiếng Nhật",
+    "tiếng hàn": "Tiếng Hàn",
+    "korean": "Tiếng Hàn",
+    # "Tiếng Hoa" và "Tiếng Trung" là cùng một ngôn ngữ → gộp làm một.
+    "tiếng trung": "Tiếng Trung",
+    "tiếng hoa": "Tiếng Trung",
+    "chinese": "Tiếng Trung",
+    "mandarin": "Tiếng Trung",
+    "tiếng pháp": "Tiếng Pháp",
+    "french": "Tiếng Pháp",
+    "tiếng đức": "Tiếng Đức",
+    "german": "Tiếng Đức",
 }
 
 # ── Lớp 3: Display chuẩn cho các acronym / tên riêng (key đã lowercase) ─────────
@@ -432,6 +483,7 @@ PREFERRED_DISPLAY: dict[str, str] = {
     "css": "CSS",
     "php": "PHP",
     "aws": "AWS",
+    "azure": "Azure",
     "gcp": "GCP",
     "sap": "SAP",
     "crm": "CRM",
@@ -459,7 +511,45 @@ PREFERRED_DISPLAY: dict[str, str] = {
     "power bi": "Power BI",
     "github": "GitHub",
     "gitlab": "GitLab",
+    "ielts": "IELTS",
+    "toeic": "TOEIC",
+    "toefl": "TOEFL",
+    "jlpt": "JLPT",
+    "hsk": "HSK",
+    "topik": "TOPIK",
 }
+
+# ── Lớp 1c: Gom biến thể NGOẠI NGỮ về một canonical ───────────────────────────
+# Cột `*_skills_parsed` là free-text người đăng JD tự gõ nên cùng "tiếng Anh" bị
+# vỡ thành hàng chục entry riêng, mỗi entry một weight → loãng trọng số và làm
+# exact-match phía online trượt:
+#     "Tiếng Anh", "Tiếng Anh giao tiếp", "Giao tiếp tiếng Anh",
+#     "Thành thạo tiếng Anh", "Tiếng Anh cơ bản", "Tiếng Anh 4 kỹ năng (...)"
+# Không thể liệt kê hết bằng ALIAS_MAP → dùng regex: hễ chuỗi có nhắc tới một
+# ngôn ngữ thì quy về đúng tên ngôn ngữ đó.
+#
+# CHÚ Ý: KHÔNG gom chứng chỉ (IELTS/JLPT/HSK/TOPIK) vào đây — chúng là bằng
+# chứng cụ thể, giữ riêng và liên kết với ngôn ngữ qua PARENT_SKILL_MAP.
+_LANGUAGE_CANON: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"tiếng\s*anh|\benglish\b", re.IGNORECASE), "Tiếng Anh"),
+    (re.compile(r"tiếng\s*nhật|\bjapanese\b", re.IGNORECASE), "Tiếng Nhật"),
+    (re.compile(r"tiếng\s*hàn|\bkorean\b", re.IGNORECASE), "Tiếng Hàn"),
+    # "Tiếng Hoa" = "Tiếng Trung" → cùng canonical.
+    (re.compile(r"tiếng\s*(?:trung|hoa)|\bchinese\b|\bmandarin\b",
+                re.IGNORECASE), "Tiếng Trung"),
+    (re.compile(r"tiếng\s*pháp|\bfrench\b", re.IGNORECASE), "Tiếng Pháp"),
+    (re.compile(r"tiếng\s*đức|\bgerman\b", re.IGNORECASE), "Tiếng Đức"),
+    (re.compile(r"tiếng\s*nga|\brussian\b", re.IGNORECASE), "Tiếng Nga"),
+]
+
+
+def _canon_language(skill: str) -> Optional[str]:
+    """Trả về tên ngôn ngữ chuẩn nếu skill nói về một ngoại ngữ, None nếu không."""
+    for pattern, canonical in _LANGUAGE_CANON:
+        if pattern.search(skill):
+            return canonical
+    return None
+
 
 # Token đuôi coi là tương đương khi gộp lặp (số nhiều / biến thể).
 _SUFFIX_EQUIV = {"api": "api", "apis": "api"}
@@ -490,12 +580,17 @@ def _collapse_repeated_suffix(skill: str) -> str:
     return " ".join(tokens)
 
 
+@lru_cache(maxsize=8192)
 def canonicalize_skill(skill: str) -> str:
     """
-    Chuẩn hóa 1 skill: alias → collapse suffix → preferred display.
+    Chuẩn hóa 1 skill: alias → synonym → ngoại ngữ → collapse suffix → display.
 
     KHÔNG tự quyết hoa/thường cho biến thể không xác định (vd 'Kế toán' vs
     'kế toán'); việc đó để dedupe_weighted_skills() xử lý data-driven.
+
+    Có cache vì hàm được gọi trong vòng lặp lồng nhau ở semantic_skill_match
+    (mỗi skill ứng viên × mỗi entry PARENT_SKILL_MAP). Các map là hằng số
+    module, không đổi lúc chạy → cache an toàn.
 
     Args:
         skill: Tên skill thô.
@@ -512,6 +607,12 @@ def canonicalize_skill(skill: str) -> str:
         return ALIAS_MAP[low]
     if low in SYNONYM_MAP:
         return SYNONYM_MAP[low]
+
+    # Ngoại ngữ: xét TRƯỚC preferred-display vì cần bắt cả cụm dài tự do
+    # ("Thành thạo tiếng Anh 4 kỹ năng") chứ không chỉ chuỗi khớp chính xác.
+    lang = _canon_language(s)
+    if lang:
+        return lang
 
     s = _collapse_repeated_suffix(s)
     low = s.lower()

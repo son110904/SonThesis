@@ -73,6 +73,12 @@ def start_background_warmup() -> None:
             logger.info("Background warmup: model + KB đã sẵn sàng.")
         except Exception:  # noqa: BLE001
             logger.exception("Background warmup lỗi (sẽ load lazy khi cần)")
+        # KHÔNG để thread này kết thúc: trên Windows + torch 2.6 (Python 3.12),
+        # runtime native bị segfault lúc dọn dẹp thread-local khi luồng ĐÃ nạp
+        # model thoát ra (kiểm chứng: load ở main thread thì bình thường, load ở
+        # thread rồi để thread kết thúc thì crash exit 139 — cả CPU lẫn CUDA).
+        # Park luồng lại (daemon nên vẫn không chặn tiến trình thoát).
+        threading.Event().wait()
 
     threading.Thread(target=_work, name="model-warmup", daemon=True).start()
     logger.info("Background warmup: bắt đầu nạp model ở luồng nền…")

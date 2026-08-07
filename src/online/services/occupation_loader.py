@@ -27,6 +27,23 @@ def _display_name(occupation_field: str) -> str:
     return name[:1].upper() + name[1:] if name else occupation_field
 
 
+# Tên hiển thị cho các LĨNH VỰC (root profile) — override thủ công vì suy ra
+# tự động từ trường "occupation" (offline pipeline) chỉ nối chuỗi bằng dấu
+# cách, đọc lên khó tách bạch các mảng nghề gộp trong 1 lĩnh vực (vd "Công
+# nghệ thông tin kỹ thuật số" ↔ 2 mảng: CNTT VÀ kỹ thuật số). Key = tên file
+# (ASCII, ổn định) — KHÔNG dùng trường "occupation" vì nó có dấu và có thể đổi
+# nếu offline pipeline build lại.
+_FIELD_DISPLAY_OVERRIDES: dict[str, str] = {
+    "cong_nghe_thong_tin_ky_thuat_so": "Công nghệ thông tin, kỹ thuật số",
+    "du_lich_nha_hang_khach_san_dich_vu": "Du lịch, nhà hàng, khách sạn, dịch vụ",
+    "giao_duc_đao_tao_nghien_cuu": "Giáo dục và đào tạo",
+    "kinh_doanh_ban_hang_cham_soc_khach_hang": "Kinh doanh, bán hàng, chăm sóc khách hàng",
+    "nhan_su_hanh_chinh_phap_che_tu_van": "Nhân sự, hành chính, pháp chế, tư vấn",
+    "nong_nghiep_nang_luong_moi_truong": "Nông nghiệp, năng lượng, môi trường",
+    "y_te_duoc_cham_soc_suc_khoe_cong_nghe_sinh_hoc": "Y tế, dược, chăm sóc sức khỏe, công nghệ sinh học",
+}
+
+
 @lru_cache(maxsize=1)
 def _load_all() -> dict[str, dict]:
     """Nạp toàn bộ profile vào cache. Key = tên file (không đuôi)."""
@@ -42,7 +59,9 @@ def _load_all() -> dict[str, dict]:
                 data = json.load(f)
             key = path.stem
             data["_key"] = key
-            data["_display"] = _display_name(data.get("occupation", key))
+            data["_display"] = _FIELD_DISPLAY_OVERRIDES.get(key) or _display_name(
+                data.get("occupation", key)
+            )
             result[key] = data
         except Exception as e:  # noqa: BLE001
             logger.error(f"Lỗi đọc occupation profile {path.name}: {e}")

@@ -14,6 +14,10 @@ DATA_DIR: Path = ROOT_DIR / "data"
 MODELS_DIR: Path = ROOT_DIR / "models"
 OCCUPATION_PROFILES_DIR: Path = DATA_DIR / "occupation_profiles"
 
+# ── Database & lưu trữ CV người dùng (Authentication) ───────────────────────
+DB_PATH: Path = DATA_DIR / "app.db"
+USER_CV_DIR: Path = DATA_DIR / "user_cvs"
+
 # ── File dữ liệu ────────────────────────────────────────────────────────────
 JD_FILE: Path = DATA_DIR / "VietJobs JD.csv"
 RESUME_FIT_FILE: Path = DATA_DIR / "job_resume_fit.csv"
@@ -83,6 +87,18 @@ SKILL_TIER_IMPORTANT: float = 0.15
 JD_TEXT_COLS: list[str] = ["description", "requirements_text", "technical_skills", "soft_skills"]
 JD_CATEGORY_COL: str = "category"
 JD_TITLE_COL: str = "job_title"
+JD_EXPERIENCE_COL: str = "experience_required"
+
+# ── Lọc JD theo mức kinh nghiệm yêu cầu (Bước 1) ────────────────────────────
+# Đối tượng người dùng mục tiêu của hệ thống là SINH VIÊN MỚI RA TRƯỜNG, nên cơ
+# sở tri thức chỉ nên tổng hợp từ các tin tuyển dụng ở mức đầu vào. Nếu gộp cả
+# tin đòi 3-5 năm kinh nghiệm, hồ sơ nghề sẽ chứa những kỹ năng chỉ xuất hiện ở
+# vị trí cao cấp, khiến ứng viên mới ra trường luôn bị chấm thiếu một cách không
+# công bằng.
+#   None → không lọc (dùng toàn bộ 48.092 JD).
+#   12   → chỉ giữ JD yêu cầu tối đa 12 tháng (giữ ~30.135 JD).
+# ⚠️ Đổi giá trị này phải chạy lại run_offline.py + scripts/build_sub_occupations.py.
+MAX_EXPERIENCE_MONTHS: int | None = 12
 
 # ── Cột trong job_resume_fit.csv ────────────────────────────────────────────
 RESUME_TEXT_COL: str = "resume_text"
@@ -91,9 +107,15 @@ MATCH_SCORE_COL: str = "ai_match_score"
 
 
 
-# ── Final Score: match_score = MATCH_ALPHA*semantic + MATCH_BETA*weighted ──
-MATCH_ALPHA: float = 0.5    # trọng số semantic similarity
-MATCH_BETA: float = 0.5     # trọng số weighted skill score
+# ── Final Score (Bước 9) ──────────────────────────────────────────────────────
+# LƯU Ý (2026-08): Hệ thống ĐÃ BỎ Match Score tổng hợp (match_score = α*semantic + β*weighted).
+# Lý do:
+#   - Match Score cao có thể do semantic tương đồng ngữ nghĩa nhưng ứng viên THIẾU kỹ năng cốt lõi
+#     → xếp hạng Top-3 sai, recruiter mất niềm tin.
+#   - Hệ thống hiện hiển thị 2 chỉ số ĐỘC LẬP (semantic_similarity_score + weighted_skill_score)
+#     để user tự cân nhắc và LLM tự quyết định (không bị ép theo 1 công thức tổng).
+#   - Top-3 occupation: sort theo weighted_skill_score thuần (phản ánh đáp ứng kỹ năng thực tế).
+# MATCH_ALPHA / MATCH_BETA giữ lại như comment để ghi nhớ cho thesis defense (không còn dùng runtime).
 
 # ── Skill matching (Bước 8 & 10) ────────────────────────────────────────────
 # "exact" (MẶC ĐỊNH): khớp chuỗi sau canonicalize + SYNONYM_MAP song ngữ →

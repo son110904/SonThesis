@@ -4,6 +4,9 @@ email_service.py – Điều phối AI Application Email Generator.
 Chỉ chạy khi người dùng CHỦ ĐỘNG bấm nút "Tạo email ứng tuyển" (tiết kiệm chi phí
 LLM). Tái dùng candidate profile + scores + skill gap + AI CV Review ĐÃ TÍNH —
 KHÔNG re-extract / re-embed / gọi lại LLM trích profile.
+
+Lưu ý (2026-08): Đã BỎ match_score/alpha/beta. ScoreBreakdown chỉ còn 2 chỉ số
+độc lập (semantic_similarity_score + weighted_skill_score).
 """
 
 from __future__ import annotations
@@ -11,7 +14,6 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from src.config import MATCH_ALPHA, MATCH_BETA
 from src.models import CandidateProfile, ScoreBreakdown, SkillGap
 from src.online.email_generation import generate_application_email
 from src.online.services.occupation_loader import get_occupation
@@ -22,7 +24,6 @@ logger = logging.getLogger(__name__)
 def generate_application_email_for_occupation(
     candidate_profile: dict,
     occupation_key: str,
-    match_score: float,
     semantic_similarity_score: float,
     weighted_skill_score: float,
     matched_skills: list[str],
@@ -53,9 +54,6 @@ def generate_application_email_for_occupation(
     scores = ScoreBreakdown(
         semantic_similarity_score=semantic_similarity_score,
         weighted_skill_score=weighted_skill_score,
-        match_score=match_score,
-        alpha=MATCH_ALPHA,
-        beta=MATCH_BETA,
     )
     skill_gap = SkillGap(matched_skills=matched_skills, missing_skills=missing_skills)
 

@@ -67,7 +67,8 @@ _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
 _USER_TEMPLATE = """Hãy soạn email ứng tuyển cho vị trí "{occupation}".
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ để tham khảo — KHÔNG nhắc số điểm trong email)
-- Match Score tổng: {match_score:.0f}
+- Semantic Similarity: {semantic:.0f}
+- Weighted Skill Score: {weighted:.0f}
 
 ## Yêu cầu của vị trí (Occupation Profile — TỔNG HỢP từ nhiều tin tuyển dụng, KHÔNG phải 1 công ty cụ thể; nếu thấy tên công ty trong đây thì bỏ qua, không đưa vào email)
 - Kỹ năng cốt lõi (core): {core_skills}
@@ -178,7 +179,8 @@ def generate_application_email(
 
     user_prompt = _USER_TEMPLATE.format(
         occupation=occupation_display,
-        match_score=scores.match_score * 100,
+        semantic=scores.semantic_similarity_score * 100,
+        weighted=scores.weighted_skill_score * 100,
         core_skills=_fmt_inline(core_skills, 20),
         responsibilities=_fmt_inline(list(responsibilities), 12),
         cand_skills=_fmt_inline(candidate_profile.skills, 30),

@@ -9,7 +9,9 @@ Chức năng:
 """
 
 import logging
+import re
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -20,6 +22,8 @@ from src.config import (
     RESUME_FIT_FILE,
     JD_CATEGORY_COL,
     JD_TITLE_COL,
+    JD_EXPERIENCE_COL,
+    MAX_EXPERIENCE_MONTHS,
     RESUME_TEXT_COL,
     JOB_TEXT_COL,
     MATCH_SCORE_COL,
@@ -27,13 +31,49 @@ from src.config import (
 
 logger = logging.getLogger(__name__)
 
+# Cột experience_required là văn bản tiếng Việt tự do ("1 năm", "6 tháng",
+# "Không yêu cầu"...) nên phải quy đổi về số tháng mới so sánh được.
+_EXP_PATTERNS: list[tuple[re.Pattern, float]] = [
+    (re.compile(r"(\d+(?:[.,]\d+)?)\s*năm", re.IGNORECASE), 12.0),
+    (re.compile(r"(\d+(?:[.,]\d+)?)\s*tháng", re.IGNORECASE), 1.0),
+]
+# Các cách diễn đạt "không đòi hỏi kinh nghiệm" → quy về 0 tháng.
+_NO_EXP = re.compile(r"không\s*yêu\s*cầu|không\s*cần|chưa\s*có\s*kinh\s*nghiệm", re.IGNORECASE)
 
-def load_jd_dataset(path: Path = JD_FILE) -> pd.DataFrame:
+
+def parse_experience_months(value) -> Optional[float]:
+    """
+    Quy đổi mô tả kinh nghiệm sang SỐ THÁNG.
+
+    Args:
+        value: Giá trị thô của cột experience_required.
+
+    Returns:
+        Số tháng, 0.0 nếu không yêu cầu kinh nghiệm, None nếu không đọc được
+        (để nơi gọi tự quyết định giữ hay loại).
+    """
+    if not isinstance(value, str) or not value.strip():
+        return None
+    if _NO_EXP.search(value):
+        return 0.0
+    for pattern, factor in _EXP_PATTERNS:
+        m = pattern.search(value)
+        if m:
+            return float(m.group(1).replace(",", ".")) * factor
+    return None
+
+
+def load_jd_dataset(
+    path: Path = JD_FILE,
+    max_experience_months: Optional[int] = MAX_EXPERIENCE_MONTHS,
+) -> pd.DataFrame:
     """
     Tải VietJobs_JD.csv.
 
     Args:
         path: Đường dẫn đến file CSV.
+        max_experience_months: Chỉ giữ JD yêu cầu kinh nghiệm ≤ ngưỡng này
+            (tính bằng tháng). None → giữ toàn bộ. Mặc định lấy từ config.
 
     Returns:
         DataFrame thô với các hàng thiếu cột quan trọng đã được loại bỏ.
@@ -52,6 +92,31 @@ def load_jd_dataset(path: Path = JD_FILE) -> pd.DataFrame:
 
     dropped = initial_rows - len(df)
     logger.info(f"JD dataset: {initial_rows} hàng → {len(df)} hàng (đã loại {dropped} hàng thiếu dữ liệu)")
+
+    if max_experience_months is not None:
+        df = _filter_by_experience(df, max_experience_months)
+    return df
+
+
+def _filter_by_experience(df: pd.DataFrame, max_months: int) -> pd.DataFrame:
+    """Giữ lại JD yêu cầu kinh nghiệm ≤ max_months (JD không đọc được mức kinh
+    nghiệm sẽ bị LOẠI, để cơ sở tri thức chỉ gồm tin chắc chắn ở mức đầu vào)."""
+    if JD_EXPERIENCE_COL not in df.columns:
+        logger.warning(
+            f"Không có cột '{JD_EXPERIENCE_COL}' → bỏ qua bước lọc theo kinh nghiệm."
+        )
+        return df
+
+    before = len(df)
+    months = df[JD_EXPERIENCE_COL].apply(parse_experience_months)
+    unparsed = int(months.isna().sum())
+    df = df[months.notna() & (months <= max_months)].reset_index(drop=True)
+
+    logger.info(
+        f"Lọc kinh nghiệm ≤ {max_months} tháng (đối tượng: sinh viên mới ra trường): "
+        f"{before} → {len(df)} JD "
+        f"(loại {before - len(df)}, trong đó {unparsed} JD không đọc được mức kinh nghiệm)"
+    )
     return df
 
 

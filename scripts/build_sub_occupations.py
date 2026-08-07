@@ -60,9 +60,16 @@ TAXONOMY: dict[str, dict] = {
              [r"data scientist"]),
             ("data_engineer", "Kỹ sư Dữ liệu",
              [r"data engineer", r"big data"]),
+            # "AI" phải đứng CẠNH từ chỉ vai trò, KHÔNG dùng r"kỹ sư.*ai": tiếng Việt
+            # có rất nhiều từ chứa "ai" (triển kh-ai, t-ài, lo-ại...) nên `.*ai` khớp
+            # nhầm hàng loạt chức danh không liên quan ("Kỹ Sư Java Backend Triển Khai",
+            # "Kỹ Sư Triển Khai Bản Vẽ BIM"). Dạng (?-i:AI) ép khớp đúng chữ hoa để
+            # không dính từ "ai" tiếng Việt.
             ("ai_engineer", "Kỹ sư AI",
-             [r"ai engineer", r"\bai\b engineer", r"machine learning engineer", r"ml engineer",
-              r"kỹ sư.*ai", r"r&d ai"]),
+             [r"\bai engineer\b", r"machine learning engineer", r"\bml engineer\b",
+              r"trí tuệ nhân tạo",
+              r"kỹ sư\s+(?-i:AI)\b", r"chuyên gia\s+(?-i:AI)\b", r"r&d\s+(?-i:AI)\b",
+              r"(?-i:AI)\s+(?:engineer|specialist)\b"]),
             ("data_analyst", "Chuyên viên Phân tích Dữ liệu",
              [r"data analyst", r"bi analyst", r"business intelligence", r"business data analyst",
               r"phân tích dữ liệu", r"data & business intelligence"]),

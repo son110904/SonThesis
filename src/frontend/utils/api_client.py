@@ -10,7 +10,7 @@ Hai chế độ, chọn tự động theo biến môi trường API_BASE_URL:
   • REMOTE (khi đặt API_BASE_URL, vd http://127.0.0.1:8000):
         Gọi REST API qua HTTP tới FastAPI backend (kiến trúc 2 service, dev local).
 
-Cùng một bộ hàm (health/get_occupations/analyze_cv/recommend/review) cho cả hai
+Cùng một bộ hàm (health/get_occupations/analyze_cv/compare_cv_with_jd) cho cả hai
 chế độ → phần UI không cần biết đang chạy ở đâu.
 """
 
@@ -86,41 +86,14 @@ def _http_analyze_cv(file_bytes, filename, occupation_key, include_recommendatio
     return _handle_response(resp)
 
 
-def _http_recommend(file_bytes, filename, top_k) -> dict:
-    import requests
-    files = {"file": (filename, file_bytes)}
-    form = {"top_k": str(top_k)}
-    try:
-        resp = requests.post(_url("/recommend"), files=files, data=form, timeout=_TIMEOUT)
-    except requests.RequestException as e:
-        raise APIError(f"Lỗi gọi /recommend: {e}")
-    return _handle_response(resp)
-
-
-def _http_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation) -> dict:
-    import requests
-    payload = {
-        "candidate_profile": candidate_profile,
-        "candidate_embedding": candidate_embedding,
-        "occupation": occupation_key,
-        "include_recommendation": include_recommendation,
-    }
-    try:
-        resp = requests.post(_url("/review"), json=payload, timeout=_TIMEOUT)
-    except requests.RequestException as e:
-        raise APIError(f"Lỗi gọi /review: {e}")
-    return _handle_response(resp)
-
-
 def _http_cv_improvement(
-    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    candidate_profile, occupation_key, semantic_similarity_score,
     weighted_skill_score, matched_skills, missing_skills,
 ) -> Optional[dict]:
     import requests
     payload = {
         "candidate_profile": candidate_profile,
         "occupation": occupation_key,
-        "match_score": match_score,
         "semantic_similarity_score": semantic_similarity_score,
         "weighted_skill_score": weighted_skill_score,
         "matched_skills": matched_skills,
@@ -134,14 +107,13 @@ def _http_cv_improvement(
 
 
 def _http_application_email(
-    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    candidate_profile, occupation_key, semantic_similarity_score,
     weighted_skill_score, matched_skills, missing_skills, cv_review,
 ) -> Optional[dict]:
     import requests
     payload = {
         "candidate_profile": candidate_profile,
         "occupation": occupation_key,
-        "match_score": match_score,
         "semantic_similarity_score": semantic_similarity_score,
         "weighted_skill_score": weighted_skill_score,
         "matched_skills": matched_skills,
@@ -205,47 +177,8 @@ def _embedded_analyze_cv(file_bytes, filename, occupation_key, include_recommend
     return result.to_dict()
 
 
-def _embedded_recommend(file_bytes, filename, top_k) -> dict:
-    if not file_bytes:
-        raise APIError("File rỗng.")
-    if len(file_bytes) > _MAX_FILE_BYTES:
-        raise APIError("File quá lớn (tối đa 10MB).")
-
-    from src.online.services import recommend_occupations as _svc_recommend
-    from src.online.services.analysis_service import EmptyCVError
-    from src.online.extraction_step2.text_extractor import UnsupportedFileType
-    from src.online.validation import NotACVError
-
-    try:
-        return _svc_recommend(file_bytes=file_bytes, filename=filename or "cv", top_k=top_k)
-    except (NotACVError, UnsupportedFileType, EmptyCVError) as e:
-        raise APIError(str(e))
-    except Exception as e:  # noqa: BLE001
-        logger.exception("Lỗi khi gợi ý nghề (embedded)")
-        raise APIError(f"Lỗi xử lý: {e}")
-
-
-def _embedded_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation) -> dict:
-    from src.online.services import review_occupation as _svc_review
-    from src.online.services.occupation_loader import OccupationNotFound
-
-    try:
-        result = _svc_review(
-            candidate_profile=candidate_profile,
-            candidate_embedding=candidate_embedding,
-            occupation_key=occupation_key,
-            include_recommendation=include_recommendation,
-        )
-    except OccupationNotFound as e:
-        raise APIError(str(e))
-    except Exception as e:  # noqa: BLE001
-        logger.exception("Lỗi khi review nghề đã chọn (embedded)")
-        raise APIError(f"Lỗi xử lý: {e}")
-    return result.to_dict()
-
-
 def _embedded_cv_improvement(
-    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    candidate_profile, occupation_key, semantic_similarity_score,
     weighted_skill_score, matched_skills, missing_skills,
 ) -> Optional[dict]:
     from src.online.services import generate_cv_improvement_for_occupation as _svc_improve
@@ -255,7 +188,6 @@ def _embedded_cv_improvement(
         return _svc_improve(
             candidate_profile=candidate_profile,
             occupation_key=occupation_key,
-            match_score=match_score,
             semantic_similarity_score=semantic_similarity_score,
             weighted_skill_score=weighted_skill_score,
             matched_skills=matched_skills,
@@ -269,7 +201,7 @@ def _embedded_cv_improvement(
 
 
 def _embedded_application_email(
-    candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    candidate_profile, occupation_key, semantic_similarity_score,
     weighted_skill_score, matched_skills, missing_skills, cv_review,
 ) -> Optional[dict]:
     from src.online.services import generate_application_email_for_occupation as _svc_email
@@ -279,7 +211,6 @@ def _embedded_application_email(
         return _svc_email(
             candidate_profile=candidate_profile,
             occupation_key=occupation_key,
-            match_score=match_score,
             semantic_similarity_score=semantic_similarity_score,
             weighted_skill_score=weighted_skill_score,
             matched_skills=matched_skills,
@@ -318,36 +249,16 @@ def analyze_cv(
     return _embedded_analyze_cv(file_bytes, filename, occupation_key, include_recommendation)
 
 
-def recommend_occupations(file_bytes: bytes, filename: str, top_k: int = 3) -> dict:
-    """Gợi ý Top-K nghề phù hợp nhất với CV (Career Recommendation)."""
-    if _REMOTE:
-        return _http_recommend(file_bytes, filename, top_k)
-    return _embedded_recommend(file_bytes, filename, top_k)
-
-
-def review_occupation(
-    candidate_profile: dict,
-    candidate_embedding: list,
-    occupation_key: str,
-    include_recommendation: bool = True,
-) -> dict:
-    """Sinh AI CV Review cho 1 nghề đã chọn (tái dùng profile + embedding)."""
-    if _REMOTE:
-        return _http_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)
-    return _embedded_review(candidate_profile, candidate_embedding, occupation_key, include_recommendation)
-
-
 def generate_cv_improvement(
     candidate_profile: dict,
     occupation_key: str,
-    match_score: float,
     semantic_similarity_score: float,
     weighted_skill_score: float,
     matched_skills: list,
     missing_skills: list,
 ) -> Optional[dict]:
     """Sinh AI CV Improvement — tiếp nối AI CV Review (tái dùng profile + điểm số)."""
-    args = (candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    args = (candidate_profile, occupation_key, semantic_similarity_score,
             weighted_skill_score, matched_skills, missing_skills)
     if _REMOTE:
         return _http_cv_improvement(*args)
@@ -357,7 +268,6 @@ def generate_cv_improvement(
 def generate_application_email(
     candidate_profile: dict,
     occupation_key: str,
-    match_score: float,
     semantic_similarity_score: float,
     weighted_skill_score: float,
     matched_skills: list,
@@ -365,8 +275,400 @@ def generate_application_email(
     cv_review: Optional[dict] = None,
 ) -> Optional[dict]:
     """Sinh Application Email — CHỈ gọi khi người dùng chủ động bấm nút."""
-    args = (candidate_profile, occupation_key, match_score, semantic_similarity_score,
+    args = (candidate_profile, occupation_key, semantic_similarity_score,
             weighted_skill_score, matched_skills, missing_skills, cv_review)
     if _REMOTE:
         return _http_application_email(*args)
     return _embedded_application_email(*args)
+
+
+# ─── JD Comparison (Chế độ 2) ────────────────────────────────────────────────
+def _http_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -> dict:
+    import requests
+    files = {
+        "cv_file": (cv_filename, cv_bytes),
+        "jd_file": (jd_filename, jd_bytes),
+    }
+    try:
+        resp = requests.post(_url("/compare-jd"), files=files, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /compare-jd: {e}")
+    return _handle_response(resp)
+
+
+def _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -> dict:
+    from src.online.services import compare_cv_with_jd as _svc_jd
+    from src.online.extraction_step2.text_extractor import UnsupportedFileType
+    from src.online.services.analysis_service import EmptyCVError
+    from src.online.validation import NotACVError
+
+    try:
+        result = _svc_jd(
+            cv_file_bytes=cv_bytes,
+            cv_filename=cv_filename or "cv",
+            jd_file_bytes=jd_bytes,
+            jd_filename=jd_filename or "jd",
+        )
+    except (EmptyCVError, NotACVError, UnsupportedFileType, ValueError) as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi so sánh CV ↔ JD (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+    # Normalize: candidate_profile là CandidateProfile dataclass → convert sang dict
+    # để UI xử lý đồng nhất với REMOTE mode (JSON dict).
+    cp = result.get("candidate_profile")
+    if cp is not None and not isinstance(cp, dict):
+        result["candidate_profile"] = cp.to_dict() if hasattr(cp, "to_dict") else dict(cp)
+    return result
+
+
+def compare_cv_with_jd(
+    cv_bytes: bytes,
+    cv_filename: str,
+    jd_bytes: bytes,
+    jd_filename: str,
+) -> dict:
+    """
+    So sánh trực tiếp CV ↔ JD cụ thể (chế độ 2, không dùng Occupation KB).
+    """
+    if _REMOTE:
+        return _http_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename)
+    return _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename)
+
+
+def _http_jd_cv_improvement(
+    candidate_profile, jd_position, jd_skills, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills,
+) -> Optional[dict]:
+    import requests
+    payload = {
+        "candidate_profile": candidate_profile,
+        "jd_position": jd_position,
+        "jd_skills": jd_skills,
+        "semantic_similarity_score": semantic_similarity_score,
+        "weighted_skill_score": weighted_skill_score,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+    }
+    try:
+        resp = requests.post(_url("/jd/cv-improvement"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /jd/cv-improvement: {e}")
+    return _handle_response(resp).get("cv_improvement")
+
+
+def _http_jd_application_email(
+    candidate_profile, jd_position, jd_skills, jd_text_preview,
+    semantic_similarity_score, weighted_skill_score, matched_skills,
+    missing_skills, cv_review,
+) -> Optional[dict]:
+    import requests
+    payload = {
+        "candidate_profile": candidate_profile,
+        "jd_position": jd_position,
+        "jd_skills": jd_skills,
+        "jd_text_preview": jd_text_preview,
+        "semantic_similarity_score": semantic_similarity_score,
+        "weighted_skill_score": weighted_skill_score,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "cv_review": cv_review,
+    }
+    try:
+        resp = requests.post(_url("/jd/application-email"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /jd/application-email: {e}")
+    return _handle_response(resp).get("application_email")
+
+
+def _embedded_jd_cv_improvement(
+    candidate_profile, jd_position, jd_skills, semantic_similarity_score,
+    weighted_skill_score, matched_skills, missing_skills,
+) -> Optional[dict]:
+    from src.online.services import generate_cv_improvement_for_jd as _svc_improve
+
+    try:
+        return _svc_improve(
+            candidate_profile=candidate_profile,
+            jd_position=jd_position,
+            jd_skills=jd_skills,
+            semantic_similarity_score=semantic_similarity_score,
+            weighted_skill_score=weighted_skill_score,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh AI CV Improvement cho JD (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_jd_application_email(
+    candidate_profile, jd_position, jd_skills, jd_text_preview,
+    semantic_similarity_score, weighted_skill_score, matched_skills,
+    missing_skills, cv_review,
+) -> Optional[dict]:
+    from src.online.services import generate_application_email_for_jd as _svc_email
+
+    try:
+        return _svc_email(
+            candidate_profile=candidate_profile,
+            jd_position=jd_position,
+            jd_skills=jd_skills,
+            jd_text_preview=jd_text_preview,
+            semantic_similarity_score=semantic_similarity_score,
+            weighted_skill_score=weighted_skill_score,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+            cv_review=cv_review,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi sinh Application Email cho JD (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def generate_cv_improvement_for_jd(
+    candidate_profile: dict,
+    jd_position: str,
+    jd_skills: list,
+    semantic_similarity_score: float,
+    weighted_skill_score: float,
+    matched_skills: list,
+    missing_skills: list,
+) -> Optional[dict]:
+    """Sinh AI CV Improvement cho JD Comparison — tiếp nối AI CV Review (tự động, không cần bấm nút)."""
+    args = (candidate_profile, jd_position, jd_skills, semantic_similarity_score,
+            weighted_skill_score, matched_skills, missing_skills)
+    if _REMOTE:
+        return _http_jd_cv_improvement(*args)
+    return _embedded_jd_cv_improvement(*args)
+
+
+def generate_application_email_for_jd(
+    candidate_profile: dict,
+    jd_position: str,
+    jd_skills: list,
+    jd_text_preview: str,
+    semantic_similarity_score: float,
+    weighted_skill_score: float,
+    matched_skills: list,
+    missing_skills: list,
+    cv_review: Optional[dict] = None,
+) -> Optional[dict]:
+    """Sinh Application Email cho JD Comparison — CHỈ gọi khi người dùng chủ động bấm nút."""
+    args = (candidate_profile, jd_position, jd_skills, jd_text_preview,
+            semantic_similarity_score, weighted_skill_score, matched_skills,
+            missing_skills, cv_review)
+    if _REMOTE:
+        return _http_jd_application_email(*args)
+    return _embedded_jd_application_email(*args)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Authentication (đăng ký/đăng nhập + lưu CV tái sử dụng)
+# ══════════════════════════════════════════════════════════════════════════
+def _http_register(full_name, email, password) -> dict:
+    import requests
+    try:
+        resp = requests.post(
+            _url("/auth/register"),
+            json={"full_name": full_name, "email": email, "password": password},
+            timeout=_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/register: {e}")
+    return _handle_response(resp)
+
+
+def _http_login(email, password) -> dict:
+    import requests
+    try:
+        resp = requests.post(
+            _url("/auth/login"), json={"email": email, "password": password}, timeout=_TIMEOUT
+        )
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/login: {e}")
+    return _handle_response(resp)
+
+
+def _http_save_cv(user_id, file_bytes, filename) -> dict:
+    import requests
+    files = {"file": (filename, file_bytes)}
+    form = {"user_id": str(user_id)}
+    try:
+        resp = requests.post(_url("/auth/cv"), files=files, data=form, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/cv: {e}")
+    return _handle_response(resp)
+
+
+def _http_get_cv_info(user_id) -> Optional[dict]:
+    import requests
+    try:
+        resp = requests.get(_url(f"/auth/cv/{user_id}"), timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/cv/{{id}}: {e}")
+    if resp.status_code == 404:
+        return None
+    return _handle_response(resp)
+
+
+def _http_analyze_cv_saved(user_id, occupation_key, include_recommendation) -> dict:
+    import requests
+    payload = {
+        "user_id": user_id,
+        "occupation": occupation_key,
+        "include_recommendation": include_recommendation,
+    }
+    try:
+        resp = requests.post(_url("/analyze-saved"), json=payload, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /analyze-saved: {e}")
+    return _handle_response(resp)
+
+
+def _http_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename) -> dict:
+    import requests
+    files = {"jd_file": (jd_filename, jd_bytes)}
+    form = {"user_id": str(user_id)}
+    try:
+        resp = requests.post(_url("/compare-jd-saved"), files=files, data=form, timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /compare-jd-saved: {e}")
+    return _handle_response(resp)
+
+
+def _embedded_register(full_name, email, password) -> dict:
+    from src.online.services import register_user as _svc
+    from src.database.repository import EmailAlreadyExistsError
+
+    try:
+        return _svc(full_name, email, password)
+    except EmailAlreadyExistsError as e:
+        raise APIError(str(e))
+    except ValueError as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi đăng ký (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_login(email, password) -> dict:
+    from src.online.services import login_user as _svc
+    from src.online.services import InvalidCredentialsError
+
+    try:
+        return _svc(email, password)
+    except InvalidCredentialsError as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi đăng nhập (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_save_cv(user_id, file_bytes, filename) -> dict:
+    if not file_bytes:
+        raise APIError("File rỗng.")
+    if len(file_bytes) > _MAX_FILE_BYTES:
+        raise APIError("File quá lớn (tối đa 10MB).")
+
+    from src.online.services import save_cv_for_user as _svc
+
+    try:
+        return _svc(user_id, file_bytes, filename or "cv")
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi lưu CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_get_cv_info(user_id) -> Optional[dict]:
+    from src.online.services import get_cv_info_for_user as _svc
+
+    try:
+        return _svc(user_id)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi lấy thông tin CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_analyze_cv_saved(user_id, occupation_key, include_recommendation) -> dict:
+    from src.online.services import analyze_cv_for_saved_user as _svc
+    from src.online.services import NoSavedCVError
+    from src.online.services.occupation_loader import OccupationNotFound
+    from src.online.services.analysis_service import EmptyCVError
+
+    try:
+        result = _svc(
+            user_id=user_id,
+            occupation_key=occupation_key,
+            include_recommendation=include_recommendation,
+        )
+    except (OccupationNotFound, NoSavedCVError, EmptyCVError) as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi phân tích CV đã lưu (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+    return result.to_dict()
+
+
+def _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename) -> dict:
+    from src.online.services import compare_saved_cv_with_jd as _svc
+    from src.online.services import NoSavedCVError
+    from src.online.extraction_step2.text_extractor import UnsupportedFileType
+    from src.online.services.analysis_service import EmptyCVError
+    from src.online.validation import NotACVError
+
+    try:
+        result = _svc(user_id=user_id, jd_file_bytes=jd_bytes, jd_filename=jd_filename or "jd")
+    except (NoSavedCVError, EmptyCVError, NotACVError, UnsupportedFileType, ValueError) as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi so sánh CV đã lưu với JD (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+    cp = result.get("candidate_profile")
+    if cp is not None and not isinstance(cp, dict):
+        result["candidate_profile"] = cp.to_dict() if hasattr(cp, "to_dict") else dict(cp)
+    return result
+
+
+def register(full_name: str, email: str, password: str) -> dict:
+    """Đăng ký tài khoản mới. Trả {id, full_name, email}."""
+    if _REMOTE:
+        return _http_register(full_name, email, password)
+    return _embedded_register(full_name, email, password)
+
+
+def login(email: str, password: str) -> dict:
+    """Đăng nhập bằng email + mật khẩu. Trả {id, full_name, email}."""
+    if _REMOTE:
+        return _http_login(email, password)
+    return _embedded_login(email, password)
+
+
+def save_cv(user_id: int, file_bytes: bytes, filename: str) -> dict:
+    """Lưu/ghi đè CV đã lưu của tài khoản."""
+    if _REMOTE:
+        return _http_save_cv(user_id, file_bytes, filename)
+    return _embedded_save_cv(user_id, file_bytes, filename)
+
+
+def get_cv_info(user_id: int) -> Optional[dict]:
+    """Thông tin CV đã lưu của tài khoản (None nếu chưa upload)."""
+    if _REMOTE:
+        return _http_get_cv_info(user_id)
+    return _embedded_get_cv_info(user_id)
+
+
+def analyze_cv_saved(user_id: int, occupation_key: str, include_recommendation: bool = True) -> dict:
+    """Phân tích CV ĐÃ LƯU của tài khoản với 1 nghề (không cần upload lại)."""
+    if _REMOTE:
+        return _http_analyze_cv_saved(user_id, occupation_key, include_recommendation)
+    return _embedded_analyze_cv_saved(user_id, occupation_key, include_recommendation)
+
+
+def compare_cv_with_jd_saved(user_id: int, jd_bytes: bytes, jd_filename: str) -> dict:
+    """So sánh CV ĐÃ LƯU của tài khoản với 1 JD (không cần upload lại CV)."""
+    if _REMOTE:
+        return _http_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename)
+    return _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename)

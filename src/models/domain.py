@@ -33,6 +33,7 @@ class CandidateProfile:
             "experience": self.experience,
             "projects": self.projects,
             "education": self.education,
+            "raw_text": self.raw_text or None,
         }
 
 
@@ -42,21 +43,17 @@ class ScoreBreakdown:
     Kết quả chấm điểm phù hợp (Bước 7-9).
 
     Tất cả điểm nằm trong [0, 1].
+    Hệ thống đã BỎ match_score (công thức tổng hợp α*semantic + β*weighted).
+    Hiện trả 2 chỉ số ĐỘC LẬP để LLM + UI sử dụng.
     """
 
     semantic_similarity_score: float
     weighted_skill_score: float
-    match_score: float
-    alpha: float
-    beta: float
 
     def to_dict(self) -> dict:
         return {
             "semantic_similarity_score": self.semantic_similarity_score,
             "weighted_skill_score": self.weighted_skill_score,
-            "match_score": self.match_score,
-            "alpha": self.alpha,
-            "beta": self.beta,
         }
 
 
@@ -110,7 +107,6 @@ class AnalysisResult:
         return {
             "occupation_key": self.occupation_key,
             "occupation_display": self.occupation_display,
-            "match_score": self.scores.match_score,
             "semantic_similarity_score": self.scores.semantic_similarity_score,
             "weighted_skill_score": self.scores.weighted_skill_score,
             "matched_skills": self.skill_gap.matched_skills,

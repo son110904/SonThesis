@@ -58,7 +58,7 @@ def render_landing() -> None:
                 <span class="accent">Shiba Intelligence</span>
               </div>
               <div class="hero-subtitle land-rise" style="--d:0.22s">
-                AI đọc &amp; đánh giá CV, gợi ý <strong>Top nghề phù hợp nhất</strong> và
+                AI đọc &amp; đánh giá CV, so sánh trực tiếp với <strong>Job Description</strong> và
                 vạch lộ trình phát triển riêng cho bạn — chỉ trong vài giây.
               </div>
             </div>
@@ -68,7 +68,9 @@ def render_landing() -> None:
         # Hiệu ứng vào trang cho nút CTA áp qua class .st-key-cta_hero (styling.py) —
         # KHÔNG wrap bằng st.markdown vì mỗi block markdown tự đóng thẻ HTML.
         if st.button("Bắt đầu ngay →", key="cta_hero"):
-            st.session_state["view"] = "home"
+            # Đã đăng nhập (còn trong session) → vào thẳng home; chưa thì phải
+            # đăng nhập/đăng ký trước (luồng: Đăng ký → Đăng nhập → Upload CV).
+            st.session_state["view"] = "home" if st.session_state.get("user") else "auth"
             st.rerun()
 
         st.markdown(
@@ -77,7 +79,7 @@ def render_landing() -> None:
               <span class="trust-item"><span class="tick">✓</span> Tương thích ATS</span>
               <span class="trust-item"><span class="tick">✓</span> Ứng dụng AI</span>
               <span class="trust-item"><span class="tick">✓</span> Bảo mật tuyệt đối</span>
-              <span class="trust-item"><span class="tick">✓</span> Gợi ý nghề hàng đầu</span>
+              <span class="trust-item"><span class="tick">✓</span> So sánh CV ↔ JD</span>
             </div>
             <div class="social-proof land-rise" style="--d:0.5s">
               <div class="sp-label">Được xây dựng trên nền tảng công nghệ</div>

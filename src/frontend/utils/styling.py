@@ -171,6 +171,30 @@ p, .stMarkdown p {{ color: var(--text); }}
 .stButton > button:focus-visible, .stFormSubmitButton > button:focus-visible {{
   outline: none !important; box-shadow: var(--cta-shadow), 0 0 0 3px rgba(212,116,26,0.35) !important;
 }}
+/* Chữ trong nút LUÔN trắng (Streamlit bọc label trong <p>/<div> nên phải ép cả
+   phần tử con, nếu không nút secondary sẽ ăn màu chữ mặc định → khó đọc). */
+.stButton > button p, .stButton > button div,
+.stFormSubmitButton > button p, .stFormSubmitButton > button div {{
+  color: #fff !important;
+}}
+
+/* Ẩn gợi ý "Press Enter to submit form" / "Press Enter to apply" của Streamlit. */
+[data-testid="InputInstructions"] {{ display: none !important; }}
+
+/* ─── Header: tên user + nút Đăng xuất ───────────────── */
+.hdr-username {{
+  text-align: right; padding-top: 0.75rem; color: var(--muted);
+  font-size: 0.9rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}}
+/* Nút hành động ở header/thanh tiêu đề: KHÔNG ngắt dòng, thu gọn padding để
+   vừa cột hẹp (mặc định padding 2rem + ngắt dòng làm nút cao dựng đứng). */
+.st-key-logout_btn button, .st-key-back_home button,
+.st-key-jd_back_home button {{
+  white-space: nowrap !important;
+  padding: 0.55rem 1.1rem !important;
+  font-size: 0.92rem !important;
+}}
 
 /* ─── File uploader (dashed zone canh giữa, KHÔNG nút Browse) ─────────
    Cả vùng dropzone đã bấm được để mở hộp thoại (react-dropzone mở dialog
@@ -194,6 +218,9 @@ p, .stMarkdown p {{ color: var(--text); }}
   content: "📄  Tải CV lên tại đây";
   font-family: 'Fraunces', Georgia, serif; font-weight: 700;
   font-size: 1.08rem; color: var(--accent); letter-spacing: -0.01em;
+}}
+.st-key-jd_uploader [data-testid="stFileUploaderDropzone"]::before {{
+  content: "📄  Tải JD lên tại đây";
 }}
 [data-testid="stFileUploaderDropzone"]::after {{
   content: "Kéo thả tệp vào đây hoặc bấm để chọn — PDF · DOCX · MD";
@@ -879,12 +906,39 @@ def inject_css() -> None:
 
 
 def render_header() -> None:
-    """Thanh header với thương hiệu ShibaCV — bấm để quay về trang chủ (landing)."""
+    """Thanh header: thương hiệu ShibaCV (trái) + tên user & Đăng xuất (phải, nếu đã đăng nhập)."""
+    import html as _html
     import streamlit as st
 
-    if st.button("🐾 ShibaCV", key="brand_home", help="Về trang chủ"):
-        st.session_state["view"] = "landing"
-        st.rerun()
+    user = st.session_state.get("user")
+    # Chia cột 1 TẦNG. Trước đây lồng columns([3,1]) rồi columns([2,1]) khiến ô
+    # chứa nút "Đăng xuất" chỉ còn ~6% bề ngang → chữ bị ngắt dọc từng ký tự.
+    if user:
+        col_brand, col_name, col_logout = st.columns([5, 2.4, 1.6])
+    else:
+        (col_brand,) = st.columns(1)
+
+    with col_brand:
+        if st.button("🐾 ShibaCV", key="brand_home", help="Về trang chủ"):
+            st.session_state["view"] = "landing"
+            st.rerun()
+
+    if user:
+        with col_name:
+            st.markdown(
+                f'<div class="hdr-username">👤 {_html.escape(user["full_name"])}</div>',
+                unsafe_allow_html=True,
+            )
+        with col_logout:
+            if st.button("Đăng xuất", key="logout_btn", use_container_width=True):
+                for k in (
+                    "user", "show_cv_uploader", "cv_job", "jd_job",
+                    "result", "jd_result", "application_email",
+                    "candidate_profile", "candidate_embedding",
+                ):
+                    st.session_state.pop(k, None)
+                st.session_state["view"] = "landing"
+                st.rerun()
     st.markdown('<div class="shiba-nav-divider"></div>', unsafe_allow_html=True)
 
 

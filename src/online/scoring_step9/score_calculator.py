@@ -1,17 +1,24 @@
 """
-score_calculator.py – Tính Final Score (Bước 9).
+score_calculator.py – Đóng gói 2 điểm số độc lập (Bước 9).
 
-    match_score = MATCH_ALPHA * semantic_similarity_score
-                + MATCH_BETA  * weighted_skill_score
+    LƯU Ý (2026-08): Hệ thống đã BỎ match_score tổng hợp.
+    Trước đây:
+        match_score = MATCH_ALPHA * semantic_similarity_score
+                    + MATCH_BETA  * weighted_skill_score
 
-Tất cả điểm ∈ [0, 1].
+    Bây giờ:
+        - Top-3 occupation: sort theo weighted_skill_score thuần.
+        - UI hiển thị 2 chỉ số độc lập (semantic + weighted).
+        - LLM không bị ép theo công thức tổng → tự cân nhắc theo context.
+
+Hàm `compute_final_score` giữ tên để không phải sửa nhiều call sites,
+giờ chỉ wrap 2 chỉ số vào ScoreBreakdown (không tính tổng).
 """
 
 from __future__ import annotations
 
 import logging
 
-from src.config import MATCH_ALPHA, MATCH_BETA
 from src.models import ScoreBreakdown
 
 logger = logging.getLogger(__name__)
@@ -20,33 +27,25 @@ logger = logging.getLogger(__name__)
 def compute_final_score(
     semantic_similarity_score: float,
     weighted_skill_score: float,
-    alpha: float = MATCH_ALPHA,
-    beta: float = MATCH_BETA,
 ) -> ScoreBreakdown:
     """
-    Kết hợp semantic + weighted skill thành match_score.
+    Đóng gói 2 điểm số độc lập (Bước 9).
 
     Args:
         semantic_similarity_score: ∈ [0, 1].
         weighted_skill_score:      ∈ [0, 1].
-        alpha:                     Trọng số semantic (default MATCH_ALPHA).
-        beta:                      Trọng số weighted skill (default MATCH_BETA).
 
     Returns:
-        ScoreBreakdown chứa cả 3 điểm + trọng số đã dùng.
+        ScoreBreakdown chứa 2 chỉ số (không còn match_score tổng).
     """
-    match_score = alpha * semantic_similarity_score + beta * weighted_skill_score
-    match_score = max(0.0, min(1.0, match_score))
+    semantic = max(0.0, min(1.0, semantic_similarity_score))
+    weighted = max(0.0, min(1.0, weighted_skill_score))
 
     logger.info(
-        f"match_score={match_score:.4f} "
-        f"(semantic={semantic_similarity_score:.4f}*{alpha} + "
-        f"weighted={weighted_skill_score:.4f}*{beta})"
+        f"score_breakdown: semantic={semantic:.4f}, weighted={weighted:.4f} "
+        "(đã bỏ match_score tổng hợp — Top-3 sort theo weighted thuần)"
     )
     return ScoreBreakdown(
-        semantic_similarity_score=round(semantic_similarity_score, 4),
-        weighted_skill_score=round(weighted_skill_score, 4),
-        match_score=round(match_score, 4),
-        alpha=alpha,
-        beta=beta,
+        semantic_similarity_score=round(semantic, 4),
+        weighted_skill_score=round(weighted, 4),
     )

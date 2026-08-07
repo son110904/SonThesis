@@ -50,6 +50,12 @@ async def lifespan(app: FastAPI):
             logger.info("Prewarm: embedding model đã sẵn sàng.")
         except Exception as e:  # noqa: BLE001
             logger.error(f"Prewarm model thất bại (sẽ load lazy khi cần): {e}")
+        # KHÔNG để thread này kết thúc: trên Windows + torch 2.6 (Python 3.12),
+        # runtime native bị segfault lúc dọn dẹp thread-local khi luồng ĐÃ nạp
+        # model thoát ra (kiểm chứng: load ở main thread thì bình thường, load ở
+        # thread rồi để thread kết thúc thì crash exit 139 — cả CPU lẫn CUDA).
+        # Park luồng lại (daemon nên vẫn không chặn tiến trình thoát).
+        threading.Event().wait()
 
     threading.Thread(target=_prewarm_model, name="model-prewarm", daemon=True).start()
 

@@ -16,7 +16,9 @@ skills) và trả về JSON có cấu trúc gồm 6 phần:
 Ràng buộc với LLM (đưa vào system prompt):
     • Mọi nhận xét dựa trên NỘI DUNG THỰC TẾ của CV; không bịa kinh nghiệm/kỹ năng.
     • Mỗi nhận xét phải có lý do/bằng chứng. Không nói chung chung.
-    • Không chỉ dựa vào Match Score — đó chỉ là tín hiệu hỗ trợ.
+    • Hệ thống đã BỎ Match Score tổng hợp (2026-08); chỉ cung cấp 2 chỉ số độc lập
+      (Semantic Similarity + Weighted Skill Score). Kết luận dựa trên TOÀN BỘ hồ sơ
+      thực tế, không bị ép theo 1 công thức tổng.
     • Văn phong như chuyên viên tuyển dụng / mentor đang review CV. Tiếng Việt.
 
 Thiếu OPENAI_API_KEY → trả None (tầng trên xử lý placeholder).
@@ -48,8 +50,9 @@ _SYSTEM_PROMPT = (
     "không bịa ra kinh nghiệm, dự án hay kỹ năng không xuất hiện.\n"
     "2. Mỗi nhận xét phải gắn với BẰNG CHỨNG cụ thể (trích chi tiết từ kinh nghiệm/dự "
     "án/kỹ năng của ứng viên). Không nhận xét chung chung kiểu 'hãy học thêm kỹ năng'.\n"
-    "3. KHÔNG chỉ dựa vào Match Score; điểm số chỉ là tín hiệu hỗ trợ. Kết luận phải "
-    "xây dựng từ toàn bộ hồ sơ, occupation profile, matched/missing skills.\n"
+    "3. KHÔNG để bị ảnh hưởng bởi điểm số. Chỉ dùng Semantic Similarity và Weighted Skill "
+    "Score như THAM KHẢO; kết luận phải xây dựng từ toàn bộ hồ sơ thực tế, "
+    "occupation profile, matched/missing skills.\n"
     "4. Nếu CV thiếu thông tin để đánh giá một mục, hãy NÓI RÕ là chưa thể hiện, thay "
     "vì suy diễn.\n"
     "5. Danh sách 'Còn thiếu (missing)' được tính bằng SO KHỚP CHUỖI CHÍNH XÁC nên có "
@@ -78,7 +81,6 @@ _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
 _USER_TEMPLATE = """Hãy review CV của ứng viên cho vị trí "{occupation}".
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ hỗ trợ — KHÔNG được kết luận chỉ dựa vào đây)
-- Match Score tổng: {match_score:.0f}
 - Semantic Similarity: {semantic:.0f}
 - Weighted Skill Score: {weighted:.0f}
 
@@ -204,7 +206,6 @@ def generate_cv_review(
 
     user_prompt = _USER_TEMPLATE.format(
         occupation=occupation_display,
-        match_score=scores.match_score * 100,
         semantic=scores.semantic_similarity_score * 100,
         weighted=scores.weighted_skill_score * 100,
         core_skills=_fmt_inline(core_skills, 20),

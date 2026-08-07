@@ -3,7 +3,7 @@ improver.py – AI CV Improvement.
 
 Sinh THÊM một báo cáo cải thiện CV ngay sau khi AI CV Review hoàn thành (Bước 11).
 KHÔNG phải một mô hình khác — tái dùng đúng Candidate Profile, Occupation Profile,
-Match Score và LLM client dùng chung với AI CV Review.
+2 chỉ số độc lập (Semantic + Weighted Skill Score) và LLM client dùng chung với AI CV Review.
 
 Đầu ra gồm 4 phần:
     - structure_review     : Bố cục CV — MỖI nhận xét phải chỉ rõ vị trí trong CV.
@@ -105,7 +105,6 @@ _NO_GRAMMAR_ISSUES_TEXT: dict[str, str] = {
 _USER_TEMPLATE = """Đây là bước tiếp theo SAU KHI đã review CV cho vị trí "{occupation}". Hãy đưa ra góp ý CẢI THIỆN CV.
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ để tham khảo)
-- Match Score tổng: {match_score:.0f}
 - Semantic Similarity: {semantic:.0f}
 - Weighted Skill Score: {weighted:.0f}
 
@@ -222,7 +221,6 @@ def generate_cv_improvement(
 
     user_prompt = _USER_TEMPLATE.format(
         occupation=occupation_display,
-        match_score=scores.match_score * 100,
         semantic=scores.semantic_similarity_score * 100,
         weighted=scores.weighted_skill_score * 100,
         core_skills=_fmt_inline(core_skills, 20),

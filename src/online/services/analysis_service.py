@@ -103,8 +103,8 @@ def _analyze_one(
     """
     Chấm điểm 1 nghề (Bước 6-11) từ candidate profile + embedding ĐÃ tính sẵn.
 
-    Tách riêng để dùng lại: (1) analyze_cv chấm 1 nghề, (2) review_occupation chấm
-    nghề người dùng chọn từ Top 3, (3) recommend_occupations gọi phần 6-10 (bỏ 11).
+    Tách riêng khỏi analyze_cv để phần chấm điểm (6-11) có thể test/tái dùng độc lập
+    với phần trích xuất (2-5).
     """
     occ_display = occupation["_display"]
     occ_embedding = occupation.get("embedding", [])
@@ -140,8 +140,8 @@ def _analyze_one(
         recommendation = cv_review_to_markdown(cv_review)
 
     logger.info(
-        f"=== Hoàn tất '{occupation['_key']}': match_score={scores.match_score:.2%} "
-        f"(semantic={semantic_score:.2%}, weighted={weighted_score:.2%}) ==="
+        f"=== Hoàn tất '{occupation['_key']}': semantic={semantic_score:.2%}, "
+        f"weighted={weighted_score:.2%} (đã bỏ match_score tổng hợp) ==="
     )
     return AnalysisResult(
         occupation_key=occupation["_key"],
@@ -152,30 +152,3 @@ def _analyze_one(
         ai_recommendation=recommendation,
         cv_review=cv_review,
     )
-
-
-def review_occupation(
-    candidate_profile: dict,
-    candidate_embedding: list[float],
-    occupation_key: str,
-    include_recommendation: bool = True,
-) -> AnalysisResult:
-    """
-    Sinh AI CV Review cho 1 nghề người dùng chọn, TÁI DÙNG candidate profile +
-    embedding đã tính ở bước recommend → KHÔNG re-extract / re-embed / gọi lại LLM
-    trích profile. Chỉ tốn 1 lần LLM cho AI Review.
-
-    Args:
-        candidate_profile:   dict (từ recommend_occupations → profile.to_dict() + raw_text).
-        candidate_embedding: vector 768 chiều đã tính.
-        occupation_key:      nghề người dùng chọn.
-    """
-    occupation = get_occupation(occupation_key)
-    profile = CandidateProfile(
-        skills=candidate_profile.get("skills", []),
-        experience=candidate_profile.get("experience", []),
-        projects=candidate_profile.get("projects", []),
-        education=candidate_profile.get("education", []),
-        raw_text=candidate_profile.get("raw_text", ""),
-    )
-    return _analyze_one(profile, candidate_embedding, occupation, include_recommendation)

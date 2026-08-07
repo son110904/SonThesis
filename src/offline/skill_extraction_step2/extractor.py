@@ -118,7 +118,9 @@ STOP_SKILLS: set[str] = {
 SKILL_PATTERNS: list[str] = [
     # Ngôn ngữ lập trình
     r"\bPython\b", r"\bJava\b", r"\bJavaScript\b", r"\bTypeScript\b",
-    r"\bC\+\+\b", r"\bC#\b", r"\.NET\b", r"\bGo\b", r"\bRust\b",
+    # C++/C# kết thúc bằng ký tự non-word → KHÔNG dùng \b ở cuối (sẽ không bao
+    # giờ match khi theo sau là dấu phẩy/khoảng trắng). Dùng lookahead thay thế.
+    r"\bC\+\+(?!\w)", r"\bC#(?!\w)", r"\.NET\b", r"\bGo\b", r"\bRust\b",
     r"\bPHP\b", r"\bRuby\b", r"\bSwift\b", r"\bKotlin\b", r"\bScala\b",
     r"\bMATLAB\b", r"\bR\s+language\b",
 
@@ -152,7 +154,7 @@ SKILL_PATTERNS: list[str] = [
 
     # Methodologies & Architecture
     r"\bAgile\b", r"\bScrum\b", r"\bKanban\b", r"\bDevOps\b",
-    r"\bREST API\b", r"\bGraphQL\b", r"\bMicroservices\b",
+    r"\bREST\s*APIs?\b", r"\bGraphQL\b", r"\bMicroservices\b",
     r"\bSQL\b", r"\bNoSQL\b",
 
     # Kỹ thuật tiếng Việt – có giá trị phân biệt ngành
@@ -237,8 +239,16 @@ SKILL_PATTERNS: list[str] = [
 
     # Sản xuất / cơ khí / lao động kỹ thuật
     r"Vận hành máy", r"Bảo trì máy móc", r"Bảo trì phòng ngừa", r"Sửa chữa thiết bị",
-    r"Gia công cơ khí", r"\bCNC\b", r"\bTiện\b", r"\bPhay\b", r"\bHàn\b", r"Đọc bản vẽ kỹ thuật",
-    r"Dung sai kỹ thuật", r"Lập trình CNC", r"CAM", r"SolidWorks", r"CATIA",
+    # "Tiện" và "Hàn" (nghề cơ khí) ĐÃ BỎ dạng đơn âm: tiếng Việt viết rời từng
+    # âm tiết nên \b vô tác dụng — "tiện" khớp trong "tiện ích / thuận tiện /
+    # tiện nghi", "Hàn" khớp trong "Hàn Quốc / tiếng Hàn". Thay bằng cụm từ
+    # KHÔNG nhập nhằng; nghề tiện vẫn được phủ bởi "Gia công cơ khí" + "CNC".
+    r"Gia công cơ khí", r"\bCNC\b", r"\bPhay\b", r"Đọc bản vẽ kỹ thuật",
+    r"Tiện CNC", r"Thợ tiện", r"Máy tiện",
+    r"Thợ hàn", r"Hàn xì", r"Hàn TIG", r"Hàn MIG", r"Hàn điện", r"Hàn hồ quang",
+    # CAM (Computer-Aided Manufacturing): ép case-sensitive qua (?-i:...) vì với
+    # IGNORECASE nó khớp chữ "cam" tiếng Việt ("cam kết", "trái cam") ở mọi ngành.
+    r"Dung sai kỹ thuật", r"Lập trình CNC", r"\b(?-i:CAM)\b", r"SolidWorks", r"CATIA",
     r"Lean Manufacturing", r"5S", r"Kaizen", r"Six Sigma", r"OEE",
     r"Kiểm soát chất lượng", r"Đảm bảo chất lượng", r"\bQC\b", r"\bQA\b", r"ISO 9001",
     r"HACCP", r"GMP", r"An toàn lao động", r"PCCC",
@@ -259,7 +269,11 @@ SKILL_PATTERNS: list[str] = [
 
     # Du lịch / nhà hàng / khách sạn / dịch vụ
     r"Nghiệp vụ lễ tân", r"Nghiệp vụ buồng phòng", r"Nghiệp vụ nhà hàng",
-    r"Quản lý khách sạn", r"Quản lý nhà hàng", r"Đặt phòng", r"Reservation",
+    r"Quản lý khách sạn", r"Quản lý nhà hàng", r"Đặt phòng",
+    # Reservation: case-sensitive vì "reservation" thường xuất hiện trong JD/CV
+    # phần mềm ("parking reservation", "booking reservation") — không phải nghiệp
+    # vụ khách sạn. Chỉ nhận dạng viết hoa như một thuật ngữ ngành.
+    r"\b(?-i:Reservation)\b",
     r"Opera PMS", r"Quản lý doanh thu khách sạn", r"Hướng dẫn du lịch",
     r"Điều hành tour", r"Thiết kế tour", r"Kỹ thuật chế biến món ăn",
     r"An toàn vệ sinh thực phẩm", r"Barista", r"Bartender", r"Thu ngân",
@@ -273,10 +287,37 @@ SKILL_PATTERNS: list[str] = [
     r"Bảo vệ thực vật", r"Thú y", r"Quản lý môi trường", r"Xử lý nước thải",
     r"An toàn môi trường", r"ESG", r"Năng lượng tái tạo", r"Điện mặt trời",
     r"Biên dịch", r"Phiên dịch", r"Dịch thuật", r"CAT tools", r"Trados",
+
+    # ── Ngoại ngữ ────────────────────────────────────────────────────────────
+    # Luôn dùng CỤM "Tiếng X" (≥2 âm tiết), KHÔNG bao giờ dùng âm tiết đơn như
+    # "Hàn"/"Anh"/"Trung" — tiếng Việt viết rời âm tiết nên \b không chặn được
+    # "Hàn Quốc", "anh chị", "tập trung" (xem lý do ở phần cơ khí phía trên).
+    r"Tiếng Anh", r"Tiếng Nhật", r"Tiếng Hàn", r"Tiếng Trung", r"Tiếng Hoa",
+    r"Tiếng Pháp", r"Tiếng Đức", r"Tiếng Nga", r"Tiếng Tây Ban Nha",
+    r"Tiếng Thái", r"Tiếng Ý", r"Tiếng Indonesia",
+    r"English", r"Japanese", r"Korean", r"Chinese", r"Mandarin",
+    r"French", r"German",
+    # Chứng chỉ ngoại ngữ — map lên ngôn ngữ tương ứng qua PARENT_SKILL_MAP
+    # (ứng viên có IELTS ⇒ khớp nghề yêu cầu "Tiếng Anh").
+    r"IELTS", r"TOEIC", r"TOEFL", r"JLPT", r"HSK", r"TOPIK",
 ]
 
+def _wrap_word_boundary(pat: str) -> str:
+    """Bọc \\b...\\b nếu pattern chưa có word boundary.
+
+    Vì SKILL_PATTERNS + re.IGNORECASE — pattern như `VAS`, `LMS`, `RF`, `CSS`
+    không có \\b sẽ match SUBSTRING (vd "vaS" trong "JavaScript", "LMs" trong
+    "LLMs", "rf" trong "perform/surface", "reservation" trong "parking
+    reservation") → sinh skill rác. Bọc \\b để yêu cầu whole-word match.
+    Pattern đã tự khai báo \\b (vd `\\bPython\\b`, `\\.NET\\b`) sẽ được giữ nguyên.
+    """
+    if "\\b" in pat or pat.startswith("(?"):
+        return pat
+    return rf"\b{pat}\b"
+
+
 _COMPILED_SKILL_PATTERNS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE) for p in SKILL_PATTERNS
+    re.compile(_wrap_word_boundary(p), re.IGNORECASE) for p in SKILL_PATTERNS
 ]
 
 _RESP_SPLITTER = re.compile(
