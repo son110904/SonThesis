@@ -283,20 +283,21 @@ def generate_application_email(
 
 
 # ─── JD Comparison (Chế độ 2) ────────────────────────────────────────────────
-def _http_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -> dict:
+def _http_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename, jd_text) -> dict:
     import requests
-    files = {
-        "cv_file": (cv_filename, cv_bytes),
-        "jd_file": (jd_filename, jd_bytes),
-    }
+    files = {"cv_file": (cv_filename, cv_bytes)}
+    if jd_bytes:
+        files["jd_file"] = (jd_filename or "jd", jd_bytes)
     try:
-        resp = requests.post(_url("/compare-jd"), files=files, timeout=_TIMEOUT)
+        resp = requests.post(
+            _url("/compare-jd"), files=files, data={"jd_text": jd_text or ""}, timeout=_TIMEOUT
+        )
     except requests.RequestException as e:
         raise APIError(f"Lỗi gọi /compare-jd: {e}")
     return _handle_response(resp)
 
 
-def _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -> dict:
+def _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename, jd_text) -> dict:
     from src.online.services import compare_cv_with_jd as _svc_jd
     from src.online.extraction_step2.text_extractor import UnsupportedFileType
     from src.online.services.analysis_service import EmptyCVError
@@ -307,7 +308,8 @@ def _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -
             cv_file_bytes=cv_bytes,
             cv_filename=cv_filename or "cv",
             jd_file_bytes=jd_bytes,
-            jd_filename=jd_filename or "jd",
+            jd_filename=jd_filename or "",
+            jd_text=jd_text,
         )
     except (EmptyCVError, NotACVError, UnsupportedFileType, ValueError) as e:
         raise APIError(str(e))
@@ -326,15 +328,19 @@ def _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename) -
 def compare_cv_with_jd(
     cv_bytes: bytes,
     cv_filename: str,
-    jd_bytes: bytes,
-    jd_filename: str,
+    jd_bytes: Optional[bytes] = None,
+    jd_filename: str = "",
+    jd_text: str = "",
 ) -> dict:
     """
     So sánh trực tiếp CV ↔ JD cụ thể (chế độ 2, không dùng Occupation KB).
+
+    JD truyền qua `jd_bytes` (file) HOẶC `jd_text` (dán trực tiếp).
     """
+    args = (cv_bytes, cv_filename, jd_bytes, jd_filename, jd_text)
     if _REMOTE:
-        return _http_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename)
-    return _embedded_compare_cv_with_jd(cv_bytes, cv_filename, jd_bytes, jd_filename)
+        return _http_compare_cv_with_jd(*args)
+    return _embedded_compare_cv_with_jd(*args)
 
 
 def _http_jd_cv_improvement(
@@ -359,14 +365,13 @@ def _http_jd_cv_improvement(
 
 
 def _http_jd_application_email(
-    candidate_profile, jd_position, jd_skills, jd_text_preview,
+    candidate_profile, jd_skills, jd_text_preview,
     semantic_similarity_score, weighted_skill_score, matched_skills,
     missing_skills, cv_review,
 ) -> Optional[dict]:
     import requests
     payload = {
         "candidate_profile": candidate_profile,
-        "jd_position": jd_position,
         "jd_skills": jd_skills,
         "jd_text_preview": jd_text_preview,
         "semantic_similarity_score": semantic_similarity_score,
@@ -404,7 +409,7 @@ def _embedded_jd_cv_improvement(
 
 
 def _embedded_jd_application_email(
-    candidate_profile, jd_position, jd_skills, jd_text_preview,
+    candidate_profile, jd_skills, jd_text_preview,
     semantic_similarity_score, weighted_skill_score, matched_skills,
     missing_skills, cv_review,
 ) -> Optional[dict]:
@@ -413,7 +418,6 @@ def _embedded_jd_application_email(
     try:
         return _svc_email(
             candidate_profile=candidate_profile,
-            jd_position=jd_position,
             jd_skills=jd_skills,
             jd_text_preview=jd_text_preview,
             semantic_similarity_score=semantic_similarity_score,
@@ -446,7 +450,6 @@ def generate_cv_improvement_for_jd(
 
 def generate_application_email_for_jd(
     candidate_profile: dict,
-    jd_position: str,
     jd_skills: list,
     jd_text_preview: str,
     semantic_similarity_score: float,
@@ -455,8 +458,12 @@ def generate_application_email_for_jd(
     missing_skills: list,
     cv_review: Optional[dict] = None,
 ) -> Optional[dict]:
-    """Sinh Application Email cho JD Comparison — CHỈ gọi khi người dùng chủ động bấm nút."""
-    args = (candidate_profile, jd_position, jd_skills, jd_text_preview,
+    """Sinh Application Email cho JD Comparison — CHỈ gọi khi người dùng chủ động bấm nút.
+
+    KHÔNG nhận jd_position (tên vị trí đoán bằng heuristic có thể sai, mà đây là thư
+    gửi thật cho nhà tuyển dụng) — LLM tự đọc jd_text_preview.
+    """
+    args = (candidate_profile, jd_skills, jd_text_preview,
             semantic_similarity_score, weighted_skill_score, matched_skills,
             missing_skills, cv_review)
     if _REMOTE:
@@ -527,10 +534,10 @@ def _http_analyze_cv_saved(user_id, occupation_key, include_recommendation) -> d
     return _handle_response(resp)
 
 
-def _http_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename) -> dict:
+def _http_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename, jd_text) -> dict:
     import requests
-    files = {"jd_file": (jd_filename, jd_bytes)}
-    form = {"user_id": str(user_id)}
+    files = {"jd_file": (jd_filename or "jd", jd_bytes)} if jd_bytes else None
+    form = {"user_id": str(user_id), "jd_text": jd_text or ""}
     try:
         resp = requests.post(_url("/compare-jd-saved"), files=files, data=form, timeout=_TIMEOUT)
     except requests.RequestException as e:
@@ -611,7 +618,7 @@ def _embedded_analyze_cv_saved(user_id, occupation_key, include_recommendation) 
     return result.to_dict()
 
 
-def _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename) -> dict:
+def _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename, jd_text) -> dict:
     from src.online.services import compare_saved_cv_with_jd as _svc
     from src.online.services import NoSavedCVError
     from src.online.extraction_step2.text_extractor import UnsupportedFileType
@@ -619,7 +626,12 @@ def _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename) -> dict:
     from src.online.validation import NotACVError
 
     try:
-        result = _svc(user_id=user_id, jd_file_bytes=jd_bytes, jd_filename=jd_filename or "jd")
+        result = _svc(
+            user_id=user_id,
+            jd_file_bytes=jd_bytes,
+            jd_filename=jd_filename or "",
+            jd_text=jd_text,
+        )
     except (NoSavedCVError, EmptyCVError, NotACVError, UnsupportedFileType, ValueError) as e:
         raise APIError(str(e))
     except Exception as e:  # noqa: BLE001
@@ -667,8 +679,17 @@ def analyze_cv_saved(user_id: int, occupation_key: str, include_recommendation: 
     return _embedded_analyze_cv_saved(user_id, occupation_key, include_recommendation)
 
 
-def compare_cv_with_jd_saved(user_id: int, jd_bytes: bytes, jd_filename: str) -> dict:
-    """So sánh CV ĐÃ LƯU của tài khoản với 1 JD (không cần upload lại CV)."""
+def compare_cv_with_jd_saved(
+    user_id: int,
+    jd_bytes: Optional[bytes] = None,
+    jd_filename: str = "",
+    jd_text: str = "",
+) -> dict:
+    """So sánh CV ĐÃ LƯU của tài khoản với 1 JD (không cần upload lại CV).
+
+    JD truyền qua `jd_bytes` (file) HOẶC `jd_text` (dán trực tiếp).
+    """
+    args = (user_id, jd_bytes, jd_filename, jd_text)
     if _REMOTE:
-        return _http_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename)
-    return _embedded_compare_cv_with_jd_saved(user_id, jd_bytes, jd_filename)
+        return _http_compare_cv_with_jd_saved(*args)
+    return _embedded_compare_cv_with_jd_saved(*args)

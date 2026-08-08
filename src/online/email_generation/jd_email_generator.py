@@ -2,11 +2,15 @@
 jd_email_generator.py – AI Application Email Generator cho JD Comparison (chế độ 2).
 
 Cùng ràng buộc chống hallucination và schema với email_generator.py (chế độ 1),
-chỉ khác ngữ cảnh: dùng jd_position + jd_skills (trích trực tiếp từ JD người dùng
-tải lên) thay vì Occupation Profile — nên KHÔNG có "trách nhiệm công việc" tổng
-hợp từ nhiều tin tuyển dụng, và do đó không cần ràng buộc "tránh nêu tên công ty
-vô tình lẫn trong dữ liệu tổng hợp" như chế độ 1 (JD ở đây LÀ đúng 1 tin cụ thể,
-nhưng vẫn không suy diễn tên công ty nếu JD không nêu rõ).
+chỉ khác ngữ cảnh: dùng jd_skills + trích đoạn JD (lấy trực tiếp từ file người
+dùng tải lên) thay vì Occupation Profile — nên KHÔNG có "trách nhiệm công việc"
+tổng hợp từ nhiều tin tuyển dụng, và do đó không cần ràng buộc "tránh nêu tên
+công ty vô tình lẫn trong dữ liệu tổng hợp" như chế độ 1 (JD ở đây LÀ đúng 1 tin
+cụ thể, nhưng vẫn không suy diễn tên công ty nếu JD không nêu rõ).
+
+CỐ Ý KHÔNG dùng `jd_position`: tên vị trí do heuristic đoán từ văn bản JD, có thể
+sai (đã gặp trường hợp nhận nhầm thanh menu website làm chức danh). Tiêu đề email
+vì vậy dùng mẫu an toàn "Thư ứng tuyển - {tên ứng viên}".
 
 Chỉ được gọi khi người dùng CHỦ ĐỘNG bấm nút "Tạo email ứng tuyển".
 Thiếu OPENAI_API_KEY hoặc CV quá sơ sài để cá nhân hóa → trả None.
@@ -39,29 +43,37 @@ _SYSTEM_PROMPT = (
     "dùng mẫu email cứng nhắc/rập khuôn — viết như một người thật đang ứng tuyển.\n"
     "4. Email cần có đủ: lời chào, giới thiệu ngắn gọn về bản thân, vị trí ứng tuyển, "
     "liên hệ trực tiếp giữa kinh nghiệm/dự án/kỹ năng trong CV với yêu cầu của JD, "
-    "mong muốn được trao đổi trong buổi phỏng vấn, lời cảm ơn, và chữ ký cuối email.\n"
+    "mong muốn được trao đổi trong buổi phỏng vấn, và lời cảm ơn.\n"
     "5. Nếu hồ sơ không đủ thông tin để viết một phần nào đó (vd không có dự án), hãy "
     "BỎ QUA phần đó thay vì suy diễn hay bịa thêm.\n"
     "6. KHÔNG suy diễn hay bịa tên công ty nếu JD không nêu rõ tên công ty cụ thể. "
     "Nếu không chắc, xưng hô chung chung, vd 'Kính gửi Bộ phận Tuyển dụng' hoặc 'Kính "
     "gửi Quý công ty'.\n"
-    "7. Tìm TÊN THẬT của ứng viên trong 'Nội dung CV gốc' bên dưới (thường ở đầu CV, "
-    "phần tiêu đề/liên hệ) và dùng ĐÚNG tên đó ở chữ ký cuối thư. Tiêu đề email PHẢI "
-    "theo đúng mẫu: 'Ứng tuyển vị trí [Tên vị trí] - {tên ứng viên}'. "
+    "7. Thân thư PHẢI kết thúc bằng ĐÚNG hai chữ 'Trân trọng.' và DỪNG LẠI ở đó. "
+    "TUYỆT ĐỐI KHÔNG thêm khối chữ ký sau đó: không ghi tên ứng viên, email, số điện "
+    "thoại, chức danh hay bất kỳ thông tin liên hệ nào ở cuối thư.\n"
+    "8. Tìm TÊN THẬT của ứng viên trong 'Nội dung CV gốc' bên dưới (thường ở đầu CV, "
+    "phần tiêu đề/liên hệ) để đưa vào TIÊU ĐỀ email theo đúng mẫu: "
+    "'Thư ứng tuyển - {tên ứng viên}'. "
     "TUYỆT ĐỐI KHÔNG bịa ra một cái tên (vd không dùng tên ví dụ như 'Nguyễn Văn A' "
-    "nếu đó không phải tên thật trong CV). Nếu CV không có tên rõ ràng, bỏ qua tên "
-    "trong chữ ký (dùng 'Ứng viên' hoặc để trống) thay vì đoán bừa.\n"
-    "8. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
+    "nếu đó không phải tên thật trong CV). Nếu CV không có tên rõ ràng, tiêu đề chỉ "
+    "ghi 'Thư ứng tuyển'.\n"
+    "9. KHÔNG nêu một TÊN VỊ TRÍ cụ thể ở tiêu đề email. Hệ thống không có tên vị trí "
+    "đã được xác thực, nên mọi tên vị trí đưa vào tiêu đề đều có nguy cơ sai — mà đây "
+    "là thư gửi thật cho nhà tuyển dụng. Trong phần thân thư, hãy nhắc tới vị trí theo "
+    "cách chung chung ('vị trí Quý công ty đang tuyển dụng'), TRỪ KHI trích đoạn JD bên "
+    "dưới ghi rõ ràng tên vị trí — khi đó được phép dùng đúng tên ghi trong JD.\n"
+    "10. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
 )
 
 _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
 {
-  "subject": "string — tiêu đề email theo đúng mẫu 'Ứng tuyển vị trí {vị trí} - {tên ứng viên}'",
-  "body": "string — toàn bộ nội dung email (bao gồm lời chào & chữ ký), CÓ xuống dòng \\n giữa các đoạn",
+  "subject": "string — tiêu đề email theo đúng mẫu 'Thư ứng tuyển - {tên ứng viên}', KHÔNG kèm tên vị trí",
+  "body": "string — nội dung email, bắt đầu bằng lời chào và KẾT THÚC bằng 'Trân trọng.' (KHÔNG có chữ ký/tên/email/SĐT sau đó), CÓ xuống dòng \\n giữa các đoạn",
   "matching_highlights": ["string — điểm mạnh trong CV khớp nhất với JD, CHỈ từ kỹ năng/kinh nghiệm/dự án có thật trong CV"]
 }"""
 
-_USER_TEMPLATE = """Hãy soạn email ứng tuyển cho vị trí tuyển dụng: "{jd_position}".
+_USER_TEMPLATE = """Hãy soạn email ứng tuyển dựa trên Job Description dưới đây.
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ để tham khảo — KHÔNG nhắc số điểm trong email)
 - Semantic Similarity: {semantic:.0f}
@@ -142,7 +154,6 @@ def _normalize_email(raw: dict) -> Optional[dict]:
 
 
 def generate_jd_application_email(
-    jd_position: str,
     jd_skills: list[str],
     jd_text_preview: str,
     scores: ScoreBreakdown,
@@ -153,6 +164,12 @@ def generate_jd_application_email(
 ) -> Optional[dict]:
     """
     Sinh Application Email cá nhân hóa cho JD Comparison (chỉ khi người dùng bấm nút).
+
+    CHỦ ĐÍCH KHÔNG nhận `jd_position`: tên vị trí do hệ thống đoán bằng heuristic từ
+    văn bản JD nên có thể sai (vd nhận nhầm menu điều hướng của website tuyển dụng).
+    Email là thư gửi THẬT cho nhà tuyển dụng nên sai ở đây tốn kém hơn nhiều so với
+    sai trên màn hình. LLM tự đọc trích đoạn JD để hiểu vị trí, và chỉ nêu tên vị trí
+    khi chính JD ghi rõ.
 
     Returns:
         dict {"subject", "body", "matching_highlights"}, hoặc None nếu LLM không khả
@@ -171,7 +188,6 @@ def generate_jd_application_email(
         return None
 
     user_prompt = _USER_TEMPLATE.format(
-        jd_position=jd_position or "(không xác định được)",
         semantic=scores.semantic_similarity_score * 100,
         weighted=scores.weighted_skill_score * 100,
         jd_text_preview=(jd_text_preview or "")[:1500],

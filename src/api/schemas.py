@@ -153,10 +153,13 @@ class JDCVImprovementRequest(BaseModel):
 
 
 class JDApplicationEmailRequest(BaseModel):
-    """Body endpoint POST /jd/application-email (chỉ gọi khi người dùng chủ động bấm nút)."""
+    """Body endpoint POST /jd/application-email (chỉ gọi khi người dùng chủ động bấm nút).
+
+    KHÔNG có `jd_position`: tên vị trí là kết quả đoán bằng heuristic nên có thể sai,
+    mà email là thư gửi thật cho nhà tuyển dụng. LLM tự đọc `jd_text_preview`.
+    """
 
     candidate_profile: dict
-    jd_position: str = ""
     jd_skills: list[str] = []
     jd_text_preview: str = ""
     semantic_similarity_score: float = Field(..., ge=0, le=1)

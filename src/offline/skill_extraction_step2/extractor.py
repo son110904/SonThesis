@@ -146,6 +146,27 @@ SKILL_PATTERNS: list[str] = [
     r"\bApache Kafka\b", r"\bApache Airflow\b",
     r"\bTableau\b", r"\bPower BI\b",
 
+    # ── Computer Vision & Deep Learning chuyên sâu ───────────────────────
+    # Nhóm ML/AI phía trên chỉ có 5 mẫu nên JD ngành AI bị bỏ sót gần hết
+    # thuật ngữ chuyên môn (JD của VinAI chỉ trích được 5/18 kỹ năng).
+    # Thư viện & công cụ
+    r"\bOpenCV\b", r"\bCUDA\b", r"\bTensorRT\b", r"\bTF\s?Lite\b", r"\bONNX\b",
+    r"\bKeras\b", r"\bXGBoost\b", r"\bLightGBM\b", r"Hugging\s?Face",
+    r"\bLangChain\b", r"\bMLOps\b", r"Vector Database", r"\bKaggle\b",
+    # Kiến trúc mô hình. GAN/RAG ép CHỮ HOA vì "gan"/"rag" là từ có thật
+    # (tiếng Việt "gan", tiếng Anh "rag") — cùng loại bẫy như "cam"/"tiện".
+    r"\bCNN\b", r"\bRNN\b", r"\bLSTM\b", r"\bTransformer\b", r"\bBERT\b",
+    r"\b(?-i:GAN)\b", r"\b(?-i:RAG)\b", r"Diffusion Model",
+    # Tác vụ thị giác máy tính
+    r"Computer Vision", r"Thị giác máy tính", r"Xử lý ảnh",
+    r"Object Detection", r"Object Tracking", r"Image Classification",
+    r"Image Segmentation", r"Semantic Segmentation", r"Instance Segmentation",
+    r"Image Processing", r"\bYOLO\b", r"\bOCR\b",
+    r"Face Recognition", r"Nhận diện khuôn mặt",
+    # Kỹ thuật chung
+    r"Reinforcement Learning", r"Học tăng cường",
+    r"Feature Engineering", r"Model Deployment", r"Data Labeling",
+
     # Tools & OS
     r"\bLinux\b", r"\bWindows Server\b", r"\bGit\b",
     r"\bGitHub\b", r"\bGitLab\b", r"\bJira\b", r"\bConfluence\b",

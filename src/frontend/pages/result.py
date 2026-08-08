@@ -81,33 +81,35 @@ def render_result() -> None:
     application_email = st.session_state.get("application_email")
     if application_email:
         render_application_email(application_email)
-        if st.button("↻ Tạo lại email khác"):
-            st.session_state.pop("application_email", None)
-            st.rerun()
+        # Bấm "Tạo lại" phải sinh email mới NGAY (trước đây chỉ xóa email cũ rồi
+        # rerun → phải bấm lần thứ hai mới thực sự tạo).
+        do_generate = st.button("↻ Tạo lại email khác", key="regen_email")
     else:
-        if st.button("✉️ Tạo email ứng tuyển", type="primary"):
-            with st.spinner("Shiba đang soạn email ứng tuyển…"):
-                try:
-                    email = generate_application_email(
-                        candidate_profile=result.get("candidate_profile", {}),
-                        occupation_key=result["occupation_key"],
-                        semantic_similarity_score=result["semantic_similarity_score"],
-                        weighted_skill_score=result["weighted_skill_score"],
-                        matched_skills=result.get("matched_skills", []),
-                        missing_skills=result.get("missing_skills", []),
-                        cv_review=result.get("cv_review"),
-                    )
-                except APIError as e:
-                    st.error(f"Không tạo được email: {e}")
-                    email = None
-            if email:
-                st.session_state["application_email"] = email
-                st.rerun()
-            else:
-                st.warning(
-                    "CV chưa đủ thông tin để soạn email cá nhân hóa cho vị trí này, "
-                    "hoặc dịch vụ AI hiện không khả dụng."
+        do_generate = st.button("✉️ Tạo email ứng tuyển", type="primary", key="gen_email")
+
+    if do_generate:
+        with st.spinner("Shiba đang soạn email ứng tuyển…"):
+            try:
+                email = generate_application_email(
+                    candidate_profile=result.get("candidate_profile", {}),
+                    occupation_key=result["occupation_key"],
+                    semantic_similarity_score=result["semantic_similarity_score"],
+                    weighted_skill_score=result["weighted_skill_score"],
+                    matched_skills=result.get("matched_skills", []),
+                    missing_skills=result.get("missing_skills", []),
+                    cv_review=result.get("cv_review"),
                 )
+            except APIError as e:
+                st.error(f"Không tạo được email: {e}")
+                email = None
+        if email:
+            st.session_state["application_email"] = email
+            st.rerun()
+        else:
+            st.warning(
+                "CV chưa đủ thông tin để soạn email cá nhân hóa cho vị trí này, "
+                "hoặc dịch vụ AI hiện không khả dụng."
+            )
 
     # ── Hồ sơ trích xuất ─────────────────────────────────────────────────────
     profile = result.get("candidate_profile", {})

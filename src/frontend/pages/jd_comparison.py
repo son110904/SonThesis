@@ -82,19 +82,23 @@ def render_jd_comparison_page() -> None:
     logger.info(f"Running compare_cv_with_jd: cv={job.get('cv_filename')}, jd={job.get('jd_filename')}")
 
     try:
+        # JD đến từ file (jd_bytes) HOẶC ô dán trực tiếp (jd_text) — home.py chỉ
+        # đặt đúng một trong hai khóa này.
         if job.get("use_saved"):
             # CV đã lưu theo tài khoản (Authentication) — không cần upload lại.
             result = compare_cv_with_jd_saved(
                 user_id=job["user_id"],
-                jd_bytes=job["jd_bytes"],
-                jd_filename=job["jd_filename"],
+                jd_bytes=job.get("jd_bytes"),
+                jd_filename=job.get("jd_filename", ""),
+                jd_text=job.get("jd_text", ""),
             )
         else:
             result = compare_cv_with_jd(
                 cv_bytes=job["cv_bytes"],
                 cv_filename=job["cv_filename"],
-                jd_bytes=job["jd_bytes"],
-                jd_filename=job["jd_filename"],
+                jd_bytes=job.get("jd_bytes"),
+                jd_filename=job.get("jd_filename", ""),
+                jd_text=job.get("jd_text", ""),
             )
         logger.info(f"compare_cv_with_jd OK: matched={len(result.get('matched_skills', []))} skills, "
                     f"missing={len(result.get('missing_skills', []))}")
@@ -136,9 +140,9 @@ def render_jd_result() -> None:
         st.markdown(
             f"""
             <div class="eyebrow">Bước 4 · Kết quả so sánh</div>
-            <div class="results-title">CV vs {html.escape(result.get('jd_position') or 'Job Description')}</div>
+            <div class="results-title">CV vs JD</div>
             <div class="results-sub">
-              {result.get('jd_filename', '')} &nbsp;•&nbsp;
+              {html.escape(result.get('jd_filename', ''))} &nbsp;•&nbsp;
               {matched_count}/{total_jd_skills} kỹ năng khớp &nbsp;•&nbsp;
               Coverage {coverage_pct:.0%}
             </div>
@@ -228,35 +232,37 @@ def render_jd_result() -> None:
     jd_application_email = st.session_state.get("jd_application_email")
     if jd_application_email:
         render_application_email(jd_application_email)
-        if st.button("↻ Tạo lại email khác"):
-            st.session_state.pop("jd_application_email", None)
-            st.rerun()
+        # Bấm "Tạo lại" phải sinh email mới NGAY. Trước đây nút chỉ xóa email cũ
+        # rồi rerun → giao diện quay về nút "Tạo email ứng tuyển" và người dùng
+        # phải bấm lần thứ hai.
+        do_generate = st.button("↻ Tạo lại email khác", key="jd_regen_email")
     else:
-        if st.button("✉️ Tạo email ứng tuyển", type="primary", key="jd_gen_email"):
-            with st.spinner("Shiba đang soạn email ứng tuyển…"):
-                try:
-                    email = generate_application_email_for_jd(
-                        candidate_profile=result.get("candidate_profile", {}),
-                        jd_position=result.get("jd_position", ""),
-                        jd_skills=result.get("jd_skills", []),
-                        jd_text_preview=result.get("jd_text_preview", ""),
-                        semantic_similarity_score=result["semantic_similarity_score"],
-                        weighted_skill_score=result["weighted_skill_score"],
-                        matched_skills=result.get("matched_skills", []),
-                        missing_skills=result.get("missing_skills", []),
-                        cv_review=review or None,
-                    )
-                except APIError as e:
-                    st.error(f"Không tạo được email: {e}")
-                    email = None
-            if email:
-                st.session_state["jd_application_email"] = email
-                st.rerun()
-            else:
-                st.warning(
-                    "CV chưa đủ thông tin để soạn email cá nhân hóa cho JD này, "
-                    "hoặc dịch vụ AI hiện không khả dụng."
+        do_generate = st.button("✉️ Tạo email ứng tuyển", type="primary", key="jd_gen_email")
+
+    if do_generate:
+        with st.spinner("Shiba đang soạn email ứng tuyển…"):
+            try:
+                email = generate_application_email_for_jd(
+                    candidate_profile=result.get("candidate_profile", {}),
+                    jd_skills=result.get("jd_skills", []),
+                    jd_text_preview=result.get("jd_text_preview", ""),
+                    semantic_similarity_score=result["semantic_similarity_score"],
+                    weighted_skill_score=result["weighted_skill_score"],
+                    matched_skills=result.get("matched_skills", []),
+                    missing_skills=result.get("missing_skills", []),
+                    cv_review=review or None,
                 )
+            except APIError as e:
+                st.error(f"Không tạo được email: {e}")
+                email = None
+        if email:
+            st.session_state["jd_application_email"] = email
+            st.rerun()
+        else:
+            st.warning(
+                "CV chưa đủ thông tin để soạn email cá nhân hóa cho JD này, "
+                "hoặc dịch vụ AI hiện không khả dụng."
+            )
 
     # ── Candidate extracted profile ───────────────────────────────────────────
     profile = result.get("candidate_profile") or {}

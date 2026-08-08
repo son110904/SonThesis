@@ -10,6 +10,7 @@ không phải upload lại ở mỗi lần phân tích. KHÔNG lưu candidate_pr
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -24,8 +25,26 @@ from src.online.services.jd_comparison_service import compare_cv_with_jd
 logger = logging.getLogger(__name__)
 
 
+# Regex email: bắt buộc có phần tên trước @, tên miền, và đuôi ≥2 chữ cái.
+# Trước đây chỉ kiểm tra `"@" in email` nên các chuỗi thiếu phần tên như
+# "@gmail.com" hay thiếu đuôi như "a@gmail" vẫn đăng ký được.
+_EMAIL_RE = re.compile(
+    r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$"
+)
+
+
 class InvalidCredentialsError(ValueError):
     """Raise khi email không tồn tại hoặc mật khẩu sai."""
+
+
+def _validate_email(email: str) -> str:
+    """Chuẩn hóa + kiểm tra định dạng email. Raise ValueError nếu sai."""
+    email = email.strip().lower()
+    if not email:
+        raise ValueError("Vui lòng nhập email.")
+    if len(email) > 254 or not _EMAIL_RE.match(email):
+        raise ValueError("Email không hợp lệ. Ví dụ đúng: ten.ban@gmail.com")
+    return email
 
 
 class NoSavedCVError(ValueError):
@@ -50,9 +69,9 @@ def register_user(full_name: str, email: str, password: str) -> dict:
         EmailAlreadyExistsError: email đã tồn tại.
     """
     full_name = full_name.strip()
-    email = email.strip().lower()
-    if not full_name or not email or "@" not in email:
-        raise ValueError("Vui lòng nhập đầy đủ họ tên và email hợp lệ.")
+    if not full_name:
+        raise ValueError("Vui lòng nhập họ và tên.")
+    email = _validate_email(email)
     if len(password) < 6:
         raise ValueError("Mật khẩu cần ít nhất 6 ký tự.")
 
@@ -134,14 +153,20 @@ def analyze_cv_for_saved_user(
 
 def compare_saved_cv_with_jd(
     user_id: int,
-    jd_file_bytes: bytes,
-    jd_filename: str,
+    jd_file_bytes: Optional[bytes] = None,
+    jd_filename: str = "",
+    jd_text: Optional[str] = None,
 ) -> dict:
-    """So sánh CV đã lưu của user với 1 JD — tái dùng compare_cv_with_jd() nguyên vẹn."""
+    """
+    So sánh CV đã lưu của user với 1 JD — tái dùng compare_cv_with_jd() nguyên vẹn.
+
+    JD nhận qua file (`jd_file_bytes`) hoặc văn bản dán trực tiếp (`jd_text`).
+    """
     cv_file_bytes, cv_filename = _load_saved_cv_bytes(user_id)
     return compare_cv_with_jd(
         cv_file_bytes=cv_file_bytes,
         cv_filename=cv_filename,
         jd_file_bytes=jd_file_bytes,
         jd_filename=jd_filename,
+        jd_text=jd_text,
     )

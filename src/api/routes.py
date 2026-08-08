@@ -25,6 +25,7 @@ Authentication (hỗ trợ trải nghiệm — lưu 1 CV/tài khoản để tái
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
@@ -74,6 +75,9 @@ router = APIRouter()
 
 # Giới hạn kích thước file CV (10 MB)
 _MAX_FILE_BYTES = 10 * 1024 * 1024
+# Giới hạn độ dài JD dán trực tiếp. Một tin tuyển dụng dài nhất cũng hiếm khi
+# quá vài nghìn ký tự; chặn ở đây để tránh dán nhầm cả trang web vào ô nhập.
+_MAX_JD_TEXT_CHARS = 50_000
 
 
 @router.get("/health")
@@ -186,36 +190,47 @@ def application_email(req: ApplicationEmailRequest) -> dict:
 @router.post("/compare-jd", response_model=JDComparisonResponse)
 async def compare_jd(
     cv_file: UploadFile = File(..., description="CV dạng PDF/DOCX/MD"),
-    jd_file: UploadFile = File(..., description="Job Description dạng PDF/DOCX/MD"),
+    jd_file: Optional[UploadFile] = File(None, description="Job Description dạng PDF/DOCX/MD"),
+    jd_text: str = Form("", description="Nội dung JD dán trực tiếp (thay cho jd_file)"),
 ) -> JDComparisonResponse:
     """
     So sánh trực tiếp CV ↔ JD cụ thể (CHẾ ĐỘ 2 — KHÔNG dùng Occupation KB).
 
+    JD nhận qua `jd_file` HOẶC `jd_text` (dán trực tiếp) — cần ít nhất một trong hai.
+
     Pipeline:
       1. Extract text CV → validate là CV (LLM/heuristic).
-      2. Extract text JD.
+      2. Lấy text JD (từ file hoặc từ nội dung dán).
       3. Build candidate profile (hybrid regex + LLM).
       4. Extract skills từ JD, match với candidate skills.
       5. Tính 2 chỉ số độc lập (semantic_similarity_score + weighted_skill_score).
       6. AI Recommendation (LLM) với context JD cụ thể.
     """
     cv_bytes = await cv_file.read()
-    jd_bytes = await jd_file.read()
+    jd_bytes = await jd_file.read() if jd_file is not None else None
     if not cv_bytes:
         raise HTTPException(status_code=400, detail="File CV rỗng.")
-    if not jd_bytes:
-        raise HTTPException(status_code=400, detail="File JD rỗng.")
+    if not jd_bytes and not jd_text.strip():
+        raise HTTPException(
+            status_code=400, detail="Vui lòng tải lên file JD hoặc dán nội dung JD."
+        )
     if len(cv_bytes) > _MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail="File CV quá lớn (tối đa 10MB).")
-    if len(jd_bytes) > _MAX_FILE_BYTES:
+    if jd_bytes and len(jd_bytes) > _MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail="File JD quá lớn (tối đa 10MB).")
+    if len(jd_text) > _MAX_JD_TEXT_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Nội dung JD quá dài (tối đa {_MAX_JD_TEXT_CHARS:,} ký tự).",
+        )
 
     try:
         result = compare_cv_with_jd(
             cv_file_bytes=cv_bytes,
             cv_filename=cv_file.filename or "cv",
             jd_file_bytes=jd_bytes,
-            jd_filename=jd_file.filename or "jd",
+            jd_filename=(jd_file.filename if jd_file is not None else "") or "",
+            jd_text=jd_text,
         )
     except UnsupportedFileType as e:
         raise HTTPException(status_code=415, detail=str(e))
@@ -269,7 +284,6 @@ def jd_application_email(req: JDApplicationEmailRequest) -> dict:
     try:
         result = generate_application_email_for_jd(
             candidate_profile=req.candidate_profile,
-            jd_position=req.jd_position,
             jd_skills=req.jd_skills,
             jd_text_preview=req.jd_text_preview,
             semantic_similarity_score=req.semantic_similarity_score,
@@ -371,20 +385,32 @@ def analyze_saved(req: AnalyzeSavedRequest) -> AnalyzeResponse:
 @router.post("/compare-jd-saved", response_model=JDComparisonResponse)
 async def compare_jd_saved(
     user_id: int = Form(...),
-    jd_file: UploadFile = File(..., description="Job Description dạng PDF/DOCX/MD"),
+    jd_file: Optional[UploadFile] = File(None, description="Job Description dạng PDF/DOCX/MD"),
+    jd_text: str = Form("", description="Nội dung JD dán trực tiếp (thay cho jd_file)"),
 ) -> JDComparisonResponse:
-    """So sánh CV ĐÃ LƯU của tài khoản với 1 JD cụ thể (không cần upload lại CV)."""
-    jd_bytes = await jd_file.read()
-    if not jd_bytes:
-        raise HTTPException(status_code=400, detail="File JD rỗng.")
-    if len(jd_bytes) > _MAX_FILE_BYTES:
+    """So sánh CV ĐÃ LƯU của tài khoản với 1 JD cụ thể (không cần upload lại CV).
+
+    JD nhận qua `jd_file` HOẶC `jd_text` (dán trực tiếp).
+    """
+    jd_bytes = await jd_file.read() if jd_file is not None else None
+    if not jd_bytes and not jd_text.strip():
+        raise HTTPException(
+            status_code=400, detail="Vui lòng tải lên file JD hoặc dán nội dung JD."
+        )
+    if jd_bytes and len(jd_bytes) > _MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail="File JD quá lớn (tối đa 10MB).")
+    if len(jd_text) > _MAX_JD_TEXT_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Nội dung JD quá dài (tối đa {_MAX_JD_TEXT_CHARS:,} ký tự).",
+        )
 
     try:
         result = compare_saved_cv_with_jd(
             user_id=user_id,
             jd_file_bytes=jd_bytes,
-            jd_filename=jd_file.filename or "jd",
+            jd_filename=(jd_file.filename if jd_file is not None else "") or "",
+            jd_text=jd_text,
         )
     except NoSavedCVError as e:
         raise HTTPException(status_code=404, detail=str(e))

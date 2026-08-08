@@ -37,26 +37,48 @@ _POSITION_PATTERNS = [
     re.compile(r"(?im)^\s*(?:hiring| tuyển| recruitment)\s*[:\-]?\s*(.+)", re.MULTILINE),
 ]
 
+# JD lưu từ website thường có thanh menu điều hướng ở đầu file ("Về chúng tôi
+# Dịch vụ Giải pháp ... Tuyển dụng"). Trước đây bước dự phòng lấy luôn dòng đầu
+# có ≥2 từ nên nhận nhầm menu này làm tên vị trí, kéo theo nội dung sai vào cả
+# tiêu đề email ứng tuyển. Chặn bằng 2 tín hiệu: quá nhiều từ + chứa từ khóa menu.
+_MAX_TITLE_WORDS = 8
+_NAV_MENU_RE = re.compile(
+    r"trang\s*chủ|về\s*chúng\s*tôi|giới\s*thiệu|liên\s*hệ|dịch\s*vụ|tin\s*tức|"
+    r"giải\s*pháp|sản\s*phẩm|khách\s*hàng|home\s|about\s*us|contact|services",
+    re.IGNORECASE,
+)
+
 
 def _extract_position_hint(jd_text: str) -> str:
-    """Trích job title / position từ JD text."""
+    """
+    Trích tên vị trí tuyển dụng từ JD text.
+
+    Trả "" khi không chắc chắn — nơi gọi sẽ hiển thị "(không xác định được)".
+    Thà không biết còn hơn đoán sai, vì giá trị này được đưa thẳng vào lời nhắc
+    LLM (AI Review / góp ý CV / email ứng tuyển).
+    """
     lines = jd_text.splitlines()
     # Ưu tiên 10 dòng đầu
     head = "\n".join(lines[:10])
     for pat in _POSITION_PATTERNS:
         m = pat.search(head)
         if m:
-            result = m.group(1).strip()
+            # Pattern khớp chức danh (backend/devops/...) KHÔNG có nhóm bắt →
+            # phải dùng group(0), nếu không sẽ IndexError làm hỏng cả request.
+            result = (m.group(1) if m.groups() else m.group(0)).strip()
             if len(result) >= 3:
                 return result
 
-    # Thử dòng đầu tiên non-empty có ≥3 từ
+    # Dự phòng: dòng đầu tiên trông GIỐNG một chức danh (ngắn, không phải menu).
     for line in lines[:5]:
         line = line.strip()
-        if len(line.split()) >= 2 and len(line) <= 80 and not any(
-            line.lower().startswith(k) for k in ["job", "position", "title", "mô tả"]
-        ):
-            return line
+        if not (2 <= len(line.split()) <= _MAX_TITLE_WORDS) or len(line) > 80:
+            continue
+        if _NAV_MENU_RE.search(line):
+            continue
+        if any(line.lower().startswith(k) for k in ("job", "position", "title", "mô tả")):
+            continue
+        return line
 
     return ""
 
@@ -124,17 +146,24 @@ def _match_skills(candidate_skills: list[str], jd_skills: list[str]) -> tuple[li
 def compare_cv_with_jd(
     cv_file_bytes: bytes,
     cv_filename: str,
-    jd_file_bytes: bytes,
-    jd_filename: str,
+    jd_file_bytes: Optional[bytes] = None,
+    jd_filename: str = "",
+    jd_text: Optional[str] = None,
 ) -> dict:
     """
     So sánh trực tiếp CV với Job Description.
 
+    JD nhận theo MỘT trong hai cách (ưu tiên `jd_text` nếu có cả hai):
+      - `jd_text`: nội dung JD người dùng dán/gõ trực tiếp — nhiều tin tuyển dụng
+        chỉ tồn tại trên web, không có file để tải về.
+      - `jd_file_bytes` + `jd_filename`: file JD (PDF/DOCX/MD).
+
     Args:
         cv_file_bytes:  Nội dung file CV (PDF/DOCX/MD).
         cv_filename:   Tên file CV (để detect format).
-        jd_file_bytes:  Nội dung file JD (PDF/DOCX/MD).
+        jd_file_bytes:  Nội dung file JD, bỏ trống nếu dùng `jd_text`.
         jd_filename:    Tên file JD (để detect format).
+        jd_text:        Nội dung JD dạng văn bản thuần.
 
     Returns:
         dict với keys:
@@ -142,17 +171,18 @@ def compare_cv_with_jd(
           semantic_similarity_score, weighted_skill_score, coverage_pct,
           matched_skills, missing_skills, candidate_profile,
           ai_recommendation
+
+    Raises:
+        ValueError: thiếu cả hai nguồn JD, hoặc không trích được văn bản.
     """
     from src.online.extraction_step2.text_extractor import extract_text_from_bytes
     from src.online.skill_extraction_step3.candidate_skill_extractor import (
         extract_candidate_skills,
     )
+    from src.online.skill_extraction_step3.llm_skill_extractor import extract_jd_skills
     from src.online.candidate_profile_step4.profile_builder import (
         build_candidate_profile,
     )
-    from src.offline.preprocessing_step1.text_cleaner import clean_text
-    from src.offline.skill_extraction_step2.extractor import extract_skills_from_text
-    from src.offline.skill_normalize import canonicalize_skill
     from src.online.semantic_matching_step7.semantic_matcher import (
         compute_semantic_score,
     )
@@ -167,11 +197,19 @@ def compare_cv_with_jd(
         raise ValueError("Không trích được văn bản từ file CV.")
     logger.info(f"CV text length: {len(cv_text)} chars")
 
-    # ── Step 2: Extract JD text ──────────────────────────────────────────────
-    logger.info(f"JD Comparison: extract JD from '{jd_filename}'")
-    jd_text = extract_text_from_bytes(jd_file_bytes, jd_filename)
-    if not jd_text or not jd_text.strip():
-        raise ValueError("Không trích được văn bản từ file JD.")
+    # ── Step 2: Lấy JD text (từ ô dán trực tiếp HOẶC từ file) ────────────────
+    if jd_text and jd_text.strip():
+        jd_text = jd_text.strip()
+        jd_filename = jd_filename or "JD dán trực tiếp"
+        logger.info(f"JD Comparison: dùng JD dán trực tiếp ({len(jd_text)} chars)")
+    elif jd_file_bytes:
+        logger.info(f"JD Comparison: extract JD from '{jd_filename}'")
+        jd_text = extract_text_from_bytes(jd_file_bytes, jd_filename)
+        if not jd_text or not jd_text.strip():
+            raise ValueError("Không trích được văn bản từ file JD.")
+    else:
+        raise ValueError("Vui lòng tải lên file JD hoặc dán nội dung JD.")
+
     jd_text_preview = jd_text[:2000]
     logger.info(f"JD text length: {len(jd_text)} chars")
 
@@ -179,27 +217,25 @@ def compare_cv_with_jd(
     jd_position = _extract_position_hint(jd_text)
     logger.info(f"JD position hint: '{jd_position}'")
 
-    # ── Step 4: Extract JD skills ───────────────────────────────────────────
-    jd_clean = clean_text(jd_text)
-    raw_jd_skills = extract_skills_from_text(jd_clean)
-    seen: set[str] = set()
-    jd_skills: list[str] = []
-    for s in raw_jd_skills:
-        cs = canonicalize_skill(s)
-        if cs and cs.lower() not in seen:
-            seen.add(cs.lower())
-            jd_skills.append(cs)
+    # ── Step 4: Extract JD skills (hybrid regex + LLM) ──────────────────────
+    # Dùng CÙNG cơ chế hybrid như phía CV. Trước đây JD chỉ trích bằng regex nên
+    # phụ thuộc hoàn toàn vào việc từ khóa có sẵn trong tập mẫu hay không — JD
+    # ngành hẹp bị bỏ sót phần lớn yêu cầu, khiến điểm khớp sai lệch.
+    jd_skills = extract_jd_skills(jd_text)
     logger.info(f"Trích {len(jd_skills)} skills từ JD")
 
     # ── Step 5: Candidate profile ────────────────────────────────────────────
     candidate_skills = extract_candidate_skills(cv_text)
     candidate_profile: CandidateProfile = build_candidate_profile(cv_text)
-    # Override skills với hybrid-extracted list
+    # Override skills với hybrid-extracted list.
+    # PHẢI giữ raw_text: email ứng tuyển dựa vào nội dung CV gốc để lấy ĐÚNG tên
+    # ứng viên ký cuối thư; thiếu nó thì chữ ký chỉ ra chung chung "Ứng viên".
     candidate_profile = CandidateProfile(
         skills=candidate_skills,
         experience=candidate_profile.experience,
         projects=candidate_profile.projects,
         education=candidate_profile.education,
+        raw_text=candidate_profile.raw_text or cv_text,
     )
     logger.info(f"Candidate skills (hybrid): {len(candidate_skills)}")
 
@@ -337,7 +373,6 @@ def generate_cv_improvement_for_jd(
 
 def generate_application_email_for_jd(
     candidate_profile: dict,
-    jd_position: str,
     jd_skills: list[str],
     jd_text_preview: str,
     semantic_similarity_score: float,
@@ -350,9 +385,13 @@ def generate_application_email_for_jd(
     Sinh Application Email cho JD Comparison, dùng lại profile + điểm số + AI CV
     Review đã tính (nếu có).
 
+    KHÔNG nhận `jd_position`: tên vị trí là kết quả đoán bằng heuristic nên có thể
+    sai, mà đây là thư gửi thật cho nhà tuyển dụng. LLM tự đọc `jd_text_preview`
+    để nắm vị trí (xem jd_email_generator).
+
     Args:
         candidate_profile: dict — từ compare_cv_with_jd()["candidate_profile"].
-        jd_position, jd_skills, jd_text_preview: bối cảnh JD đã trích.
+        jd_skills, jd_text_preview: bối cảnh JD đã trích.
         cv_review: AI CV Review đã sinh trước đó (bối cảnh, có thể None).
     """
     from src.online.email_generation.jd_email_generator import generate_jd_application_email
@@ -362,7 +401,6 @@ def generate_application_email_for_jd(
         matched_skills, missing_skills,
     )
     return generate_jd_application_email(
-        jd_position=jd_position,
         jd_skills=jd_skills,
         jd_text_preview=jd_text_preview,
         scores=scores,

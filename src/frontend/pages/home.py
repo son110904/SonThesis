@@ -21,6 +21,10 @@ def _load_occupations() -> list[dict]:
 
 _STEPS = ("Tải CV", "Phân tích AI", "Báo cáo")
 
+# JD dán tay ngắn hơn ngưỡng này gần như chắc chắn là dán thiếu/nhầm — chặn sớm
+# để không tốn một lần gọi LLM cho nội dung không đủ căn cứ phân tích.
+_MIN_JD_TEXT_CHARS = 50
+
 
 def _step_flow_html(active: int = 0) -> str:
     parts = []
@@ -148,33 +152,55 @@ def render_home() -> None:
                 st.rerun()
 
         st.markdown(
-            '<div class="form-label" style="margin-top:1rem;margin-bottom:0.4rem;">📋 Tải lên Job Description</div>',
+            '<div class="form-label" style="margin-top:1rem;margin-bottom:0.4rem;">📋 Job Description</div>',
             unsafe_allow_html=True,
         )
-        jd_file = st.file_uploader(
-            "📋 Tải lên Job Description (PDF, DOCX, Markdown)",
-            type=["pdf", "docx", "md"],
-            accept_multiple_files=False,
-            label_visibility="collapsed",
-            key="jd_uploader",
-        )
+        # Nhiều tin tuyển dụng chỉ có trên web, không tải file về được → cho phép
+        # dán thẳng nội dung. Hai tab để người dùng chọn 1 trong 2 cách.
+        tab_paste, tab_upload = st.tabs(["✍️ Dán nội dung JD", "📎 Tải lên file JD"])
+        with tab_paste:
+            jd_text = st.text_area(
+                "Dán nội dung tin tuyển dụng vào đây",
+                height=200,
+                placeholder="Dán toàn bộ mô tả công việc và yêu cầu ứng viên vào đây…",
+                label_visibility="collapsed",
+                key="jd_text_input",
+            )
+        with tab_upload:
+            jd_file = st.file_uploader(
+                "📋 Tải lên Job Description (PDF, DOCX, Markdown)",
+                type=["pdf", "docx", "md"],
+                accept_multiple_files=False,
+                label_visibility="collapsed",
+                key="jd_uploader",
+            )
+
+        jd_text = (jd_text or "").strip()
 
         if not ready:
-            st.caption("🐾 Shiba đang khởi động ở chế độ nền — bạn cứ tải file lên trước nhé.")
+            st.caption("🐾 Shiba đang khởi động ở chế độ nền — bạn cứ nhập JD trước nhé.")
         st.markdown("<div style='margin-top:0.3rem'></div>", unsafe_allow_html=True)
 
         if st.button("🔍  So sánh với JD", use_container_width=True, type="primary"):
+            # Ưu tiên file nếu người dùng cung cấp cả hai (file thường đầy đủ hơn).
+            jd_payload = (
+                {"jd_bytes": jd_file.getvalue(), "jd_filename": jd_file.name}
+                if jd_file is not None
+                else {"jd_text": jd_text, "jd_filename": "JD dán trực tiếp"}
+            )
             if show_uploader and cv_file is None:
                 st.warning("Vui lòng tải lên file CV trước.")
-            elif jd_file is None:
-                st.warning("Vui lòng tải lên file JD trước.")
+            elif jd_file is None and len(jd_text) < _MIN_JD_TEXT_CHARS:
+                st.warning(
+                    f"Vui lòng dán nội dung JD (ít nhất {_MIN_JD_TEXT_CHARS} ký tự) "
+                    "hoặc tải lên file JD."
+                )
             elif show_uploader:
                 _save_cv_best_effort(user["id"], cv_file)
                 st.session_state["jd_job"] = {
                     "cv_bytes": cv_file.getvalue(),
                     "cv_filename": cv_file.name,
-                    "jd_bytes": jd_file.getvalue(),
-                    "jd_filename": jd_file.name,
+                    **jd_payload,
                 }
                 st.session_state.pop("show_cv_uploader", None)
                 st.session_state["view"] = "jd_comparison"
@@ -183,8 +209,7 @@ def render_home() -> None:
                 st.session_state["jd_job"] = {
                     "use_saved": True,
                     "user_id": user["id"],
-                    "jd_bytes": jd_file.getvalue(),
-                    "jd_filename": jd_file.name,
+                    **jd_payload,
                 }
                 st.session_state["view"] = "jd_comparison"
                 st.rerun()

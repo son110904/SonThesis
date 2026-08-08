@@ -2,8 +2,9 @@
 styling.py – ShibaCV design system.
 
 Hệ thống ấm (rose-beige / terracotta) thể hiện ở mức premium: depth nhiều lớp,
-highlight inset trên bề mặt, glow nền mềm, typography dùng DUY NHẤT Fraunces,
-micro-motion tôn trọng prefers-reduced-motion.
+highlight inset trên bề mặt, glow nền mềm, typography dùng DUY NHẤT một font
+sans-serif hỗ trợ đầy đủ tiếng Việt (xem _FONT_STACK), micro-motion tôn trọng
+prefers-reduced-motion.
 """
 
 from __future__ import annotations
@@ -45,9 +46,25 @@ def img_tag(filename: str, style: str = "width:100%;height:auto;display:block") 
     return f'<img src="data:{mime};base64,{b64}" style="{style}">'
 
 
+# ── Typography ────────────────────────────────────────────────────────────
+# Trước đây dùng Fraunces (serif). Bản Google Fonts của Fraunces KHÔNG có subset
+# 'vietnamese', nên mọi chữ có dấu bị rơi về font dự phòng (Georgia/Times) —
+# gây lệch font ngay trong cùng một dòng, chữ có dấu và không dấu trông khác hẳn.
+# Be Vietnam Pro được thiết kế riêng cho tiếng Việt (đủ dấu, dấu đặt đúng vị trí),
+# sans-serif nên dễ đọc trên màn hình. Khai báo MỘT chỗ để đổi font sau này chỉ
+# cần sửa 1 dòng thay vì 22 chỗ rải rác.
+_FONT_URL = (
+    "https://fonts.googleapis.com/css2"
+    "?family=Be+Vietnam+Pro:wght@400;500;600;700"
+    "&display=swap"
+)
+_FONT_STACK = (
+    "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+)
+
 _CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&display=swap');
+@import url('{_FONT_URL}');
 
 :root {{
   --bg: {COLORS['bg']};
@@ -111,11 +128,11 @@ _CSS = f"""
 [data-testid="element-container"]:has(div:empty) + [data-testid="element-container"] {{ margin-top: 0 !important; }}
 
 /* ─── Base + warm ambient background ────────────────── */
-/* Toàn bộ frontend dùng DUY NHẤT Fraunces (gồm cả widget Streamlit). */
+/* Toàn bộ frontend dùng DUY NHẤT một font (gồm cả widget Streamlit). */
 html, body, .stApp, .stApp *,
 button, input, select, textarea,
 [data-baseweb], [data-baseweb] * {{
-  font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
+  font-family: {_FONT_STACK} !important;
 }}
 /* NHƯNG chừa lại font icon Material của Streamlit — nếu không, ligature
    ("upload", "arrow_right"...) sẽ hiện ra dưới dạng chữ thô. */
@@ -148,7 +165,7 @@ html, body {{
   margin-left: auto !important;
   margin-right: auto !important;
 }}
-h1, h2, h3 {{ font-family: 'Fraunces', Georgia, serif; color: var(--text); letter-spacing: -0.015em; }}
+h1, h2, h3 {{ font-family: {_FONT_STACK}; color: var(--text); letter-spacing: -0.015em; }}
 p, .stMarkdown p {{ color: var(--text); }}
 ::selection {{ background: rgba(212,116,26,0.22); }}
 
@@ -156,7 +173,7 @@ p, .stMarkdown p {{ color: var(--text); }}
 .stButton > button, .stFormSubmitButton > button {{
   background: var(--accent-grad) !important; color: #fff !important;
   border: none !important; border-radius: 999px !important;
-  font-family: 'Fraunces', Georgia, serif !important; font-size: 1.02rem !important;
+  font-family: {_FONT_STACK} !important; font-size: 1.02rem !important;
   font-weight: 600 !important; letter-spacing: 0.005em !important;
   padding: 0.72rem 2rem !important;
   box-shadow: var(--cta-shadow) !important;
@@ -216,7 +233,7 @@ p, .stMarkdown p {{ color: var(--text); }}
 [data-testid="stFileUploaderDropzoneInstructions"] {{ display: none !important; }}
 [data-testid="stFileUploaderDropzone"]::before {{
   content: "📄  Tải CV lên tại đây";
-  font-family: 'Fraunces', Georgia, serif; font-weight: 700;
+  font-family: {_FONT_STACK}; font-weight: 700;
   font-size: 1.08rem; color: var(--accent); letter-spacing: -0.01em;
 }}
 .st-key-jd_uploader [data-testid="stFileUploaderDropzone"]::before {{
@@ -313,7 +330,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 
 /* ─── Landing hero ──────────────────────────────────── */
 .hero-title {{
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: {_FONT_STACK};
   font-size: clamp(2.6rem, 4.2vw, 3.5rem); font-weight: 700; line-height: 1.08;
   color: var(--text); margin: 0; letter-spacing: -0.02em;
 }}
@@ -332,7 +349,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 
 /* ─── Upload page ───────────────────────────────────── */
 .page-h1 {{
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: {_FONT_STACK};
   font-size: clamp(1.9rem, 3vw, 2.4rem); font-weight: 700; color: var(--text);
   margin: 0 0 0.3rem; letter-spacing: -0.018em; line-height: 1.12;
 }}
@@ -343,7 +360,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 
 /* ─── Results page ──────────────────────────────────── */
 .results-title {{
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: {_FONT_STACK};
   font-size: clamp(1.9rem, 3vw, 2.3rem); font-weight: 700; color: var(--text);
   margin: 0 0 0.25rem; letter-spacing: -0.018em;
 }}
@@ -351,7 +368,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 .score-area {{ display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding-top: 0.4rem; }}
 .score-ring {{ width: 210px; height: 210px; filter: drop-shadow(0 10px 22px rgba(138,63,34,0.14)); }}
 .score-verdict {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.75rem;
+  font-family: {_FONT_STACK}; font-size: 1.75rem;
   font-weight: 700; color: var(--accent); text-align: center; letter-spacing: -0.01em;
 }}
 .score-desc {{ font-size: 0.92rem; color: var(--muted); text-align: center; max-width: 36ch; line-height: 1.6; }}
@@ -385,7 +402,7 @@ ul[role="listbox"] li[role="option"]:hover {{
   letter-spacing: 0.08em; color: var(--muted);
 }}
 .metric-card-v2 .mc-value {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 2.7rem;
+  font-family: {_FONT_STACK}; font-size: 2.7rem;
   font-weight: 700; line-height: 1.05; margin: 0.2rem 0; letter-spacing: -0.02em;
 }}
 .metric-card-v2 .mc-value span {{ font-size: 1.1rem; color: var(--muted); font-weight: 500; }}
@@ -424,7 +441,7 @@ ul[role="listbox"] li[role="option"]:hover {{
   box-shadow: var(--shadow-card), var(--inset-hi); height: auto;
 }}
 .skill-card-title {{
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: {_FONT_STACK};
   font-size: 1.15rem; font-weight: 700; color: var(--text); margin: 0 0 0.9rem;
 }}
 .skill-sub-label {{
@@ -441,11 +458,11 @@ ul[role="listbox"] li[role="option"]:hover {{
   box-shadow: var(--shadow-card), var(--inset-hi);
 }}
 .ai-rec-heading {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.3rem;
+  font-family: {_FONT_STACK}; font-size: 1.3rem;
   font-weight: 700; color: var(--accent); margin: 0 0 1rem;
 }}
 .ai-rec-wrap h2, .ai-rec-wrap h3, .ai-rec-wrap h4 {{
-  font-family: 'Fraunces', Georgia, serif; color: var(--accent);
+  font-family: {_FONT_STACK}; color: var(--accent);
   font-size: 1.1rem; font-weight: 700; margin: 1rem 0 0.4rem;
 }}
 .ai-rec-wrap ul {{ margin: 0.3rem 0 0.6rem 1.1rem; padding: 0; }}
@@ -463,7 +480,7 @@ ul[role="listbox"] li[role="option"]:hover {{
   content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 4px; background: var(--warn);
 }}
 .rv-warn-label {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.2rem; font-weight: 700;
+  font-family: {_FONT_STACK}; font-size: 1.2rem; font-weight: 700;
   color: var(--warn); margin-bottom: 0.55rem;
 }}
 .rv-warn-body {{ font-size: 0.98rem; line-height: 1.65; color: var(--text); }}
@@ -483,7 +500,7 @@ ul[role="listbox"] li[role="option"]:hover {{
   content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 4px; background: var(--accent-grad);
 }}
 .rv-overall-label {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.2rem; font-weight: 700;
+  font-family: {_FONT_STACK}; font-size: 1.2rem; font-weight: 700;
   color: var(--accent); margin-bottom: 0.55rem;
 }}
 .rv-overall-body {{ font-size: 0.98rem; line-height: 1.65; color: var(--text); }}
@@ -495,7 +512,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 }}
 .rv-card:hover {{ transform: translateY(-3px); box-shadow: var(--shadow-hover), var(--inset-hi); }}
 .rv-card-title {{
-  font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 1.08rem; margin-bottom: 0.65rem;
+  font-family: {_FONT_STACK}; font-weight: 700; font-size: 1.08rem; margin-bottom: 0.65rem;
 }}
 .rv-list {{ margin: 0; padding-left: 1.15rem; }}
 .rv-list li {{ font-size: 0.91rem; line-height: 1.6; color: var(--text); margin-bottom: 0.4rem; }}
@@ -524,7 +541,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 
 /* ─── Section heading ───────────────────────────────── */
 .section-h {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.45rem;
+  font-family: {_FONT_STACK}; font-size: 1.45rem;
   font-weight: 700; color: var(--text); margin: 2rem 0 1.05rem 0; letter-spacing: -0.012em;
   display: flex; align-items: center; gap: 0.55rem;
 }}
@@ -585,7 +602,7 @@ ul[role="listbox"] li[role="option"]:hover {{
 }}
 .scan-side {{ flex: 0 1 360px; min-width: 280px; }}
 .scan-title {{
-  font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; font-weight: 700;
+  font-family: {_FONT_STACK}; font-size: 1.5rem; font-weight: 700;
   color: var(--accent); margin-bottom: 0.5rem;
 }}
 .scan-quotes {{ position: relative; height: 1.6rem; margin-bottom: 1.3rem; }}
@@ -853,11 +870,11 @@ ul[role="listbox"] li[role="option"]:hover {{
   color:var(--muted); background:var(--accent-light); padding:0.2rem 0.6rem; border-radius:999px;
 }}
 .rec-occ {{
-  font-family:'Fraunces', Georgia, serif; font-weight:700; font-size:1.12rem;
+  font-family:{_FONT_STACK}; font-weight:700; font-size:1.12rem;
   color:var(--text); line-height:1.25; min-height:2.7em; display:flex; align-items:center;
 }}
 .rec-score {{
-  font-family:'Fraunces', Georgia, serif; font-size:2.9rem; font-weight:700;
+  font-family:{_FONT_STACK}; font-size:2.9rem; font-weight:700;
   line-height:1; letter-spacing:-0.02em; margin:0.4rem 0 0.1rem;
 }}
 .rec-score span {{ font-size:1.05rem; color:var(--muted); font-weight:500; }}

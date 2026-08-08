@@ -39,7 +39,7 @@ _SYSTEM_PROMPT = (
     "dùng mẫu email cứng nhắc/rập khuôn — viết như một người thật đang ứng tuyển.\n"
     "4. Email cần có đủ: lời chào, giới thiệu ngắn gọn về bản thân, vị trí ứng tuyển, "
     "liên hệ trực tiếp giữa kinh nghiệm/dự án/kỹ năng trong CV với yêu cầu vị trí, "
-    "mong muốn được trao đổi trong buổi phỏng vấn, lời cảm ơn, và chữ ký cuối email.\n"
+    "mong muốn được trao đổi trong buổi phỏng vấn, và lời cảm ơn.\n"
     "5. Nếu hồ sơ không đủ thông tin để viết một phần nào đó (vd không có dự án), hãy "
     "BỎ QUA phần đó thay vì suy diễn hay bịa thêm.\n"
     "6. 'Trách nhiệm công việc' trong Occupation Profile là dữ liệu TỔNG HỢP từ RẤT "
@@ -48,19 +48,22 @@ _SYSTEM_PROMPT = (
     "KHÔNG được coi đó là công ty ứng viên đang ứng tuyển và KHÔNG được nêu tên công "
     "ty cụ thể nào trong email. Luôn xưng hô chung chung, vd 'Kính gửi Bộ phận Tuyển "
     "dụng' hoặc 'Kính gửi Quý công ty'.\n"
-    "7. Tìm TÊN THẬT của ứng viên trong 'Nội dung CV gốc' bên dưới (thường ở đầu CV, "
-    "phần tiêu đề/liên hệ) và dùng ĐÚNG tên đó ở chữ ký cuối thư. Tiêu đề email PHẢI "
-    "theo đúng mẫu: 'Ứng tuyển vị trí [Tên vị trí] - {tên ứng viên}'. "
+    "7. Thân thư PHẢI kết thúc bằng ĐÚNG hai chữ 'Trân trọng.' và DỪNG LẠI ở đó. "
+    "TUYỆT ĐỐI KHÔNG thêm khối chữ ký sau đó: không ghi tên ứng viên, email, số điện "
+    "thoại, chức danh hay bất kỳ thông tin liên hệ nào ở cuối thư.\n"
+    "8. Tìm TÊN THẬT của ứng viên trong 'Nội dung CV gốc' bên dưới (thường ở đầu CV, "
+    "phần tiêu đề/liên hệ) để đưa vào TIÊU ĐỀ email theo đúng mẫu: "
+    "'Ứng tuyển vị trí [Tên vị trí] - {tên ứng viên}'. "
     "TUYỆT ĐỐI KHÔNG bịa ra một cái tên (vd không dùng tên ví dụ như 'Nguyễn Văn A' "
-    "nếu đó không phải tên thật trong CV). Nếu CV không có tên rõ ràng, bỏ qua tên "
-    "trong chữ ký (dùng 'Ứng viên' hoặc để trống) thay vì đoán bừa.\n"
-    "8. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
+    "nếu đó không phải tên thật trong CV). Nếu CV không có tên rõ ràng, tiêu đề chỉ "
+    "ghi 'Ứng tuyển vị trí [Tên vị trí]'.\n"
+    "9. Trả về DUY NHẤT một JSON hợp lệ theo schema yêu cầu, bằng tiếng Việt."
 )
 
 _JSON_SCHEMA_HINT = """Trả về JSON với đúng các khóa sau:
 {
   "subject": "string — tiêu đề email theo đúng mẫu 'Ứng tuyển vị trí {occupation} - {tên ứng viên}'",
-  "body": "string — toàn bộ nội dung email (bao gồm lời chào & chữ ký), CÓ xuống dòng \\n giữa các đoạn",
+  "body": "string — nội dung email, bắt đầu bằng lời chào và KẾT THÚC bằng 'Trân trọng.' (KHÔNG có chữ ký/tên/email/SĐT sau đó), CÓ xuống dòng \\n giữa các đoạn",
   "matching_highlights": ["string — điểm mạnh trong CV khớp nhất với vị trí, CHỈ từ kỹ năng/kinh nghiệm/dự án có thật trong CV"]
 }"""
 
