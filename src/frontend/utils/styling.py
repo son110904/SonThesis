@@ -47,19 +47,20 @@ def img_tag(filename: str, style: str = "width:100%;height:auto;display:block") 
 
 
 # ── Typography ────────────────────────────────────────────────────────────
-# Trước đây dùng Fraunces (serif). Bản Google Fonts của Fraunces KHÔNG có subset
-# 'vietnamese', nên mọi chữ có dấu bị rơi về font dự phòng (Georgia/Times) —
-# gây lệch font ngay trong cùng một dòng, chữ có dấu và không dấu trông khác hẳn.
-# Be Vietnam Pro được thiết kế riêng cho tiếng Việt (đủ dấu, dấu đặt đúng vị trí),
-# sans-serif nên dễ đọc trên màn hình. Khai báo MỘT chỗ để đổi font sau này chỉ
-# cần sửa 1 dòng thay vì 22 chỗ rải rác.
+# Font phải có subset 'vietnamese' trên Google Fonts. Đây là ràng buộc bắt buộc,
+# không phải sở thích: Fraunces (bản đầu của dự án) thiếu subset này nên mọi chữ
+# có dấu rơi về font dự phòng (Georgia/Times) — chữ có dấu và không dấu trông
+# khác hẳn nhau ngay trong cùng một dòng.
+# Inter có đủ subset 'vietnamese', là font giao diện được thiết kế riêng cho màn
+# hình (chiều cao chữ thường lớn, các ký tự dễ phân biệt). Khai báo MỘT chỗ để
+# đổi font sau này chỉ cần sửa 1 dòng thay vì 22 chỗ rải rác.
 _FONT_URL = (
     "https://fonts.googleapis.com/css2"
-    "?family=Be+Vietnam+Pro:wght@400;500;600;700"
+    "?family=Inter:wght@400;500;600;700"
     "&display=swap"
 )
 _FONT_STACK = (
-    "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+    "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
 )
 
 _CSS = f"""
@@ -124,7 +125,6 @@ _CSS = f"""
 [data-testid="stColumns"] {{ align-items: flex-start !important; }}
 [data-testid="stColumn"] > div > [data-testid="stVerticalBlock"] {{ row-gap: 0.65rem !important; }}
 [data-testid="stForm"] > [data-testid="stVerticalBlock"] {{ row-gap: 0.5rem !important; }}
-[data-testid="stMarkdownContainer"]:has(.score-area) {{ display: flex; justify-content: center; }}
 [data-testid="element-container"]:has(div:empty) + [data-testid="element-container"] {{ margin-top: 0 !important; }}
 
 /* ─── Base + warm ambient background ────────────────── */
@@ -197,6 +197,140 @@ p, .stMarkdown p {{ color: var(--text); }}
 
 /* Ẩn gợi ý "Press Enter to submit form" / "Press Enter to apply" của Streamlit. */
 [data-testid="InputInstructions"] {{ display: none !important; }}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Trang Đăng nhập / Đăng ký — thẻ trắng, tab gạch chân, ô nhập có icon
+   ════════════════════════════════════════════════════════════════════════ */
+.st-key-auth_card {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 1.9rem 2.2rem 2.1rem;
+  box-shadow: var(--shadow-card), var(--inset-hi);
+}}
+
+/* ─── Tabs: chỉ gạch chân, không nền.
+       Streamlit 1.59 bỏ data-baseweb → tab là DIV[data-testid="stTab"],
+       gạch chân là DIV con cuối cùng, đường kẻ mảnh là ::after của tablist. ─── */
+.st-key-auth_card [data-testid="stTabs"] {{ margin-bottom: 1.4rem; }}
+.st-key-auth_card [role="tablist"] {{ gap: 2.1rem !important; }}
+.st-key-auth_card [data-testid="stTab"] p {{
+  font-size: 1.02rem !important; font-weight: 600 !important;
+  color: var(--muted) !important; transition: color 0.16s ease;
+}}
+.st-key-auth_card [data-testid="stTab"]:hover p {{ color: var(--accent-mid) !important; }}
+.st-key-auth_card [data-testid="stTab"][aria-selected="true"] p {{
+  color: var(--accent) !important; font-weight: 700 !important;
+}}
+/* Gạch chân chỉ tồn tại ở tab đang chọn: DIV cuối KHÔNG có data-testid.
+   Thiếu :not() sẽ trúng luôn stMarkdownContainer của tab chưa chọn → tab nào
+   cũng bị kẻ một vạch cam. */
+.st-key-auth_card [data-testid="stTab"] > div:last-child:not([data-testid]) {{
+  height: 3px !important; border-radius: 3px 3px 0 0 !important;
+  background: var(--accent-grad) !important;
+}}
+
+/* ─── Nhãn trường (chỉ ô nhập — nhãn checkbox là DIV nên không dính) ─── */
+.st-key-auth_card label[data-testid="stWidgetLabel"] p {{
+  font-weight: 700 !important; font-size: 0.9rem !important;
+  color: var(--text) !important; margin-bottom: 0.1rem !important;
+}}
+
+/* ─── Ô nhập: viền nằm ở WRAPPER (không phải <input>) để icon nền
+       vẽ được BÊN TRONG khung. Input tự nó trong suốt, không viền. ─── */
+.st-key-auth_card [data-testid="stTextInputRootElement"] {{
+  border: 1.5px solid var(--border) !important;
+  border-radius: 14px !important;
+  background-color: #FDFAF6 !important;
+  background-repeat: no-repeat !important;
+  background-position: 1.05rem center !important;
+  background-size: 19px 19px !important;
+  padding-left: 2.9rem !important;
+  /* Streamlit ghim height:40px → <input> (46.9px) tràn ra ngoài khung. */
+  height: auto !important; min-height: 52px !important;
+  display: flex !important; align-items: center !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"]:hover {{
+  border-color: var(--accent-mid) !important;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"]:focus-within {{
+  border-color: var(--accent) !important;
+  background-color: var(--surface) !important;
+  box-shadow: 0 0 0 3px rgba(138,63,34,0.12) !important;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"] input {{
+  border: none !important; background: transparent !important; box-shadow: none !important;
+  padding: 0.8rem 0.15rem !important; font-size: 0.95rem !important;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"] input:focus {{
+  border: none !important; box-shadow: none !important;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"] input::placeholder {{
+  color: #B0998A !important; opacity: 1 !important;
+}}
+/* Nút con mắt (hiện/ẩn mật khẩu) — Streamlit có sẵn, chỉ gỡ style nút CTA */
+.st-key-auth_card [data-testid="stTextInputRootElement"] button {{
+  background: transparent !important; border: none !important;
+  box-shadow: none !important; color: var(--muted) !important;
+  padding: 0 0.6rem !important; transform: none !important;
+}}
+.st-key-auth_card [data-testid="stTextInputRootElement"] button:hover {{
+  color: var(--accent) !important; background: transparent !important;
+  filter: none !important; transform: none !important; box-shadow: none !important;
+}}
+
+/* Icon theo từng ô (dùng key của widget → class .st-key-<key>) */
+.st-key-login_email [data-testid="stTextInputRootElement"],
+.st-key-reg_email [data-testid="stTextInputRootElement"] {{
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B0998A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='4' width='20' height='16' rx='2'/%3E%3Cpath d='m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'/%3E%3C/svg%3E") !important;
+}}
+.st-key-login_password [data-testid="stTextInputRootElement"],
+.st-key-reg_password [data-testid="stTextInputRootElement"] {{
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B0998A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") !important;
+}}
+.st-key-reg_name [data-testid="stTextInputRootElement"] {{
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B0998A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
+}}
+
+/* ─── Hàng "Ghi nhớ đăng nhập" + "Quên mật khẩu?" ───
+       Ô vuông checkbox là DIV rỗng ngay sau SPAN ẩn chứa <input>; dấu tick
+       tự vẽ bằng ::after vì DIV đó không có sẵn <svg>. */
+.st-key-auth_card [data-testid="stCheckbox"] label {{ gap: 0.55rem !important; }}
+.st-key-auth_card [data-testid="stCheckbox"] label > span:first-child + div {{
+  position: relative;
+  background: var(--surface) !important;
+  border: 1.6px solid var(--border) !important; border-radius: 6px !important;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}}
+.st-key-auth_card [data-testid="stCheckbox"] label > span:first-child + div::after {{
+  content: ""; position: absolute; left: 50%; top: 46%;
+  width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: translate(-50%, -55%) rotate(45deg);
+  opacity: 0; transition: opacity 0.12s ease;
+}}
+.st-key-auth_card [data-testid="stCheckbox"] label:has(input:checked) > span:first-child + div {{
+  background: var(--accent-grad) !important; border-color: transparent !important;
+}}
+.st-key-auth_card [data-testid="stCheckbox"] label:has(input:checked) > span:first-child + div::after {{
+  opacity: 1;
+}}
+.st-key-auth_card [data-testid="stCheckbox"] p {{
+  font-size: 0.9rem !important; color: var(--text) !important; font-weight: 500 !important;
+  white-space: nowrap !important;
+}}
+.auth-forgot {{
+  text-align: right; line-height: 24px;
+  font-size: 0.9rem; font-weight: 600; color: var(--accent-mid);
+}}
+
+/* ─── Nút submit: chữ nhật bo góc, full width ─── */
+.st-key-auth_card .stFormSubmitButton {{ margin-top: 0.35rem; }}
+.st-key-auth_card .stFormSubmitButton > button {{
+  border-radius: 14px !important; width: 100% !important;
+  padding: 0.88rem 1.5rem !important; font-size: 1.05rem !important;
+  font-weight: 700 !important;
+}}
 
 /* ─── Header: tên user + nút Đăng xuất ───────────────── */
 .hdr-username {{
@@ -365,13 +499,6 @@ ul[role="listbox"] li[role="option"]:hover {{
   margin: 0 0 0.25rem; letter-spacing: -0.018em;
 }}
 .results-sub {{ font-size: 0.92rem; color: var(--muted); }}
-.score-area {{ display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding-top: 0.4rem; }}
-.score-ring {{ width: 210px; height: 210px; filter: drop-shadow(0 10px 22px rgba(138,63,34,0.14)); }}
-.score-verdict {{
-  font-family: {_FONT_STACK}; font-size: 1.75rem;
-  font-weight: 700; color: var(--accent); text-align: center; letter-spacing: -0.01em;
-}}
-.score-desc {{ font-size: 0.92rem; color: var(--muted); text-align: center; max-width: 36ch; line-height: 1.6; }}
 .shiba-rec-card {{
   background: linear-gradient(180deg, var(--surface), var(--surface-warm));
   border: 1px solid var(--border); border-radius: 18px;

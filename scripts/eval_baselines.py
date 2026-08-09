@@ -114,6 +114,41 @@ def _bm25(resumes, jobs) -> np.ndarray | None:
     return scores
 
 
+def _calibration_table(pred: np.ndarray, label: np.ndarray) -> list[dict]:
+    """
+    Phân tích hiệu chuẩn theo nhóm điểm phù hợp thật.
+
+    Dùng CHÍNH pred đã tính ở bảng so sánh baseline, để hai bảng trong báo cáo
+    luôn nhất quán về mặt số học: RMSE tổng thể = căn của trung bình có trọng số
+    các MSE theo nhóm. (Trước đây bảng hiệu chuẩn lấy từ eval_metrics.json sinh
+    lúc train, còn bảng baseline lấy từ script này → hai nguồn khác nhau cho ra
+    hai giá trị RMSE lệch nhau, rất dễ bị chất vấn.)
+
+    Ranh giới nhóm KHÔNG chồng lấn: [0,0.2) [0.2,0.4) [0.4,0.6) [0.6,0.8) [0.8,1.0].
+    """
+    pred01 = _minmax(pred) if (pred.min() < 0 or pred.max() > 1) else pred
+    buckets = [
+        (0.0, 0.2, "Thấp"),
+        (0.2, 0.4, "Trung bình thấp"),
+        (0.4, 0.6, "Trung bình"),
+        (0.6, 0.8, "Trung bình cao"),
+        (0.8, 1.01, "Cao"),  # 1.01 để label = 1.0 vẫn thuộc nhóm cuối
+    ]
+    out: list[dict] = []
+    for lo, hi, name in buckets:
+        mask = (label >= lo) & (label < hi)
+        if not mask.any():
+            continue
+        out.append({
+            "group": name,
+            "n": int(mask.sum()),
+            "label_mean": float(label[mask].mean()),
+            "pred_mean": float(pred01[mask].mean()),
+            "mse": float(np.mean((pred01[mask] - label[mask]) ** 2)),
+        })
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-pairs", type=int, default=0, help="Giới hạn số cặp val (0=toàn bộ)")
@@ -132,7 +167,8 @@ def main() -> None:
     rows: list[dict] = []
 
     print("[1] Fine-tuned gte (cosine)...")
-    rows.append(_report("Fine-tuned gte (cosine)", _embed_cosine(resumes, jobs, True), labels))
+    pred_finetuned = _embed_cosine(resumes, jobs, True)   # giữ lại cho bảng hiệu chuẩn
+    rows.append(_report("Fine-tuned gte (cosine)", pred_finetuned, labels))
 
     print("[2] Base gte (cosine)...")
     rows.append(_report("Base gte (cosine)", _embed_cosine(resumes, jobs, False), labels))
@@ -157,6 +193,28 @@ def main() -> None:
     print("=" * 72)
     print("Spearman/Pearson: cao = tốt | RMSE/MAE: thấp = tốt (đo calibration tuyệt đối).")
     print("So sánh dòng 1 vs 2 → fine-tuning đóng góp bao nhiêu. So với 3,4 → hơn baseline cổ điển.")
+
+    # ── Bảng hiệu chuẩn — CÙNG nguồn dự đoán với dòng [1] ở bảng trên ──
+    calib = _calibration_table(pred_finetuned, labels)
+    print("\n" + "=" * 72)
+    print("HIỆU CHUẨN THEO NHÓM ĐIỂM PHÙ HỢP (mô hình đề xuất)")
+    print(f"{'Nhóm':<18}{'Số cặp':>8}{'Điểm thật':>12}{'Điểm dự đoán':>15}{'MSE':>9}")
+    print("-" * 72)
+    for c in calib:
+        print(f"{c['group']:<18}{c['n']:>8}{c['label_mean']:>12.3f}"
+              f"{c['pred_mean']:>15.3f}{c['mse']:>9.4f}")
+    print("=" * 72)
+
+    # Kiểm chứng tính nhất quán giữa 2 bảng — con số hội đồng có thể tự cộng lại.
+    n_tot = sum(c["n"] for c in calib)
+    mse_w = sum(c["n"] * c["mse"] for c in calib) / n_tot
+    rmse_from_buckets = math.sqrt(mse_w)
+    rmse_overall = rows[0]["rmse"]
+    print(f"Tổng số cặp theo nhóm : {n_tot} (phải bằng {len(val)})")
+    print(f"RMSE suy từ bảng nhóm : {rmse_from_buckets:.4f}")
+    print(f"RMSE ở bảng so sánh   : {rmse_overall:.4f}")
+    print("→ KHỚP" if abs(rmse_from_buckets - rmse_overall) < 5e-4
+          else "→ LỆCH (cần xem lại)")
 
 
 if __name__ == "__main__":

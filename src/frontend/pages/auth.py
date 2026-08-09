@@ -25,54 +25,79 @@ def render_auth_page() -> None:
         """,
         unsafe_allow_html=True,
     )
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
 
-    _, col_center, _ = st.columns([1, 1.3, 1])
+    _, col_center, _ = st.columns([1, 1.9, 1])
     with col_center:
-        tab_login, tab_register = st.tabs(["Đăng nhập", "Đăng ký"])
+        # container(key=...) → class .st-key-auth_card để CSS bọc được cả thẻ
+        # (st.markdown không wrap được widget Streamlit).
+        with st.container(key="auth_card"):
+            tab_login, tab_register = st.tabs(["Đăng nhập", "Đăng ký"])
 
-        with tab_login:
-            with st.form("login_form"):
-                email = st.text_input("Email", key="login_email")
-                password = st.text_input("Mật khẩu", type="password", key="login_password")
-                submitted = st.form_submit_button(
-                    "Đăng nhập", use_container_width=True, type="primary"
-                )
-            if submitted:
-                if not email or not password:
-                    st.warning("Vui lòng nhập email và mật khẩu.")
-                else:
-                    try:
-                        user = login(email, password)
-                    except APIError as e:
-                        st.error(str(e))
-                    else:
-                        st.session_state["user"] = user
-                        st.session_state["view"] = "home"
-                        st.rerun()
+            with tab_login:
+                with st.form("login_form", border=False):
+                    email = st.text_input(
+                        "Email", key="login_email",
+                        placeholder="Nhập email của bạn",
+                    )
+                    password = st.text_input(
+                        "Mật khẩu", type="password", key="login_password",
+                        placeholder="Nhập mật khẩu của bạn",
+                    )
 
-        with tab_register:
-            with st.form("register_form"):
-                full_name = st.text_input("Họ và tên", key="reg_name")
-                email_r = st.text_input("Email", key="reg_email")
-                password_r = st.text_input(
-                    "Mật khẩu", type="password", key="reg_password",
-                    help="Ít nhất 6 ký tự",
-                )
-                submitted_r = st.form_submit_button(
-                    "Đăng ký", use_container_width=True, type="primary"
-                )
-            if submitted_r:
-                if not full_name or not email_r or not password_r:
-                    st.warning("Vui lòng nhập đầy đủ họ tên, email và mật khẩu.")
-                else:
-                    try:
-                        user = register(full_name, email_r, password_r)
-                    except APIError as e:
-                        st.error(str(e))
+                    col_remember, col_forgot = st.columns([1.25, 1])
+                    with col_remember:
+                        st.checkbox("Ghi nhớ đăng nhập", key="login_remember")
+                    with col_forgot:
+                        st.markdown(
+                            '<div class="auth-forgot">Quên mật khẩu?</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    submitted = st.form_submit_button(
+                        "Đăng nhập", use_container_width=True, type="primary"
+                    )
+                if submitted:
+                    if not email or not password:
+                        st.warning("Vui lòng nhập email và mật khẩu.")
                     else:
-                        st.session_state["user"] = user
-                        st.session_state["view"] = "home"
-                        st.rerun()
+                        try:
+                            user = login(email, password)
+                        except APIError as e:
+                            st.error(str(e))
+                        else:
+                            st.session_state["user"] = user
+                            st.session_state["view"] = "home"
+                            st.rerun()
+
+            with tab_register:
+                with st.form("register_form", border=False):
+                    full_name = st.text_input(
+                        "Họ và tên", key="reg_name",
+                        placeholder="Nhập họ và tên của bạn",
+                    )
+                    email_r = st.text_input(
+                        "Email", key="reg_email",
+                        placeholder="Nhập email của bạn",
+                    )
+                    password_r = st.text_input(
+                        "Mật khẩu", type="password", key="reg_password",
+                        placeholder="Ít nhất 6 ký tự",
+                    )
+                    submitted_r = st.form_submit_button(
+                        "Đăng ký", use_container_width=True, type="primary"
+                    )
+                if submitted_r:
+                    if not full_name or not email_r or not password_r:
+                        st.warning("Vui lòng nhập đầy đủ họ tên, email và mật khẩu.")
+                    else:
+                        try:
+                            user = register(full_name, email_r, password_r)
+                        except APIError as e:
+                            st.error(str(e))
+                        else:
+                            st.session_state["user"] = user
+                            st.session_state["view"] = "home"
+                            st.rerun()
 
     render_footer()
