@@ -170,14 +170,13 @@ def render_jd_result() -> None:
 
     st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
-    # ── Row 1: 2 metric cards + shiba (3 cột) ─────────────────────────────────
-    m1, m2, shiba_col = st.columns([1, 1, 1], gap="medium")
+    # ── Row 1: 1 metric card (rộng gấp đôi) + shiba ───────────────────────────
+    # Chế độ JD chỉ còn Semantic Similarity — đã bỏ hẳn thẻ "Tỉ lệ đáp ứng" khỏi
+    # khu vực điểm số (coverage_pct vẫn hiển thị riêng ở thanh tiến trình bên dưới,
+    # gắn liền với danh sách kỹ năng khớp/thiếu nên giữ lại chỗ đó là hợp lý hơn).
+    m1, shiba_col = st.columns([2, 1], gap="medium")
     with m1:
         render_metric_card("Semantic Similarity", result["semantic_similarity_score"])
-    with m2:
-        # Chế độ JD KHÔNG có Weighted Skill Score: một tin tuyển dụng đơn lẻ không
-        # đủ dữ liệu để suy ra trọng số kỹ năng (xem jd_comparison_service).
-        render_metric_card("Tỉ lệ đáp ứng", coverage_pct)
     with shiba_col:
         st.markdown(
             img_tag(
