@@ -32,7 +32,7 @@ def _attach_cv_improvement(result: dict) -> None:
             jd_position=result.get("jd_position", ""),
             jd_skills=result.get("jd_skills", []),
             semantic_similarity_score=result["semantic_similarity_score"],
-            weighted_skill_score=result["weighted_skill_score"],
+            coverage_pct=result["coverage_pct"],
             matched_skills=result.get("matched_skills", []),
             missing_skills=result.get("missing_skills", []),
         )
@@ -74,7 +74,7 @@ def render_jd_comparison_page() -> None:
             "Bóc tách văn bản CV & JD",
             "Trích xuất kỹ năng ứng viên (hybrid regex + LLM)",
             "Trích kỹ năng yêu cầu từ JD",
-            "Tính Semantic Similarity & Weighted Skill Score",
+            "Tính Semantic Similarity & Tỉ lệ đáp ứng",
             "Sinh AI CV Review cho JD cụ thể",
         ),
     )
@@ -143,8 +143,7 @@ def render_jd_result() -> None:
             <div class="results-title">CV vs JD</div>
             <div class="results-sub">
               {html.escape(result.get('jd_filename', ''))} &nbsp;•&nbsp;
-              {matched_count}/{total_jd_skills} kỹ năng khớp &nbsp;•&nbsp;
-              Coverage {coverage_pct:.0%}
+              {matched_count}/{total_jd_skills} kỹ năng khớp
             </div>
             """,
             unsafe_allow_html=True,
@@ -176,7 +175,9 @@ def render_jd_result() -> None:
     with m1:
         render_metric_card("Semantic Similarity", result["semantic_similarity_score"])
     with m2:
-        render_metric_card("Weighted Skill Score", result["weighted_skill_score"])
+        # Chế độ JD KHÔNG có Weighted Skill Score: một tin tuyển dụng đơn lẻ không
+        # đủ dữ liệu để suy ra trọng số kỹ năng (xem jd_comparison_service).
+        render_metric_card("Tỉ lệ đáp ứng", coverage_pct)
     with shiba_col:
         st.markdown(
             img_tag(
@@ -199,10 +200,10 @@ def render_jd_result() -> None:
         render_skill_badges(result.get("missing_skills", []), kind="missing", max_items=24,
                             empty_text="Tuyệt vời — không thiếu kỹ năng quan trọng nào.")
 
-    # ── Coverage bar ─────────────────────────────────────────────────────────
+    # ── Thanh tỉ lệ đáp ứng ──────────────────────────────────────────────────
     st.markdown(
         f"""
-        <div class="section-h">📊 Coverage: {matched_count}/{total_jd_skills} kỹ năng JD ({coverage_pct:.0%})</div>
+        <div class="section-h">📊 Đáp ứng {matched_count}/{total_jd_skills} kỹ năng JD yêu cầu</div>
         """,
         unsafe_allow_html=True,
     )
@@ -247,7 +248,7 @@ def render_jd_result() -> None:
                     jd_skills=result.get("jd_skills", []),
                     jd_text_preview=result.get("jd_text_preview", ""),
                     semantic_similarity_score=result["semantic_similarity_score"],
-                    weighted_skill_score=result["weighted_skill_score"],
+                    coverage_pct=result["coverage_pct"],
                     matched_skills=result.get("matched_skills", []),
                     missing_skills=result.get("missing_skills", []),
                     cv_review=review or None,

@@ -345,7 +345,7 @@ def compare_cv_with_jd(
 
 def _http_jd_cv_improvement(
     candidate_profile, jd_position, jd_skills, semantic_similarity_score,
-    weighted_skill_score, matched_skills, missing_skills,
+    coverage_pct, matched_skills, missing_skills,
 ) -> Optional[dict]:
     import requests
     payload = {
@@ -353,7 +353,7 @@ def _http_jd_cv_improvement(
         "jd_position": jd_position,
         "jd_skills": jd_skills,
         "semantic_similarity_score": semantic_similarity_score,
-        "weighted_skill_score": weighted_skill_score,
+        "coverage_pct": coverage_pct,
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
     }
@@ -366,7 +366,7 @@ def _http_jd_cv_improvement(
 
 def _http_jd_application_email(
     candidate_profile, jd_skills, jd_text_preview,
-    semantic_similarity_score, weighted_skill_score, matched_skills,
+    semantic_similarity_score, coverage_pct, matched_skills,
     missing_skills, cv_review,
 ) -> Optional[dict]:
     import requests
@@ -375,7 +375,7 @@ def _http_jd_application_email(
         "jd_skills": jd_skills,
         "jd_text_preview": jd_text_preview,
         "semantic_similarity_score": semantic_similarity_score,
-        "weighted_skill_score": weighted_skill_score,
+        "coverage_pct": coverage_pct,
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
         "cv_review": cv_review,
@@ -389,7 +389,7 @@ def _http_jd_application_email(
 
 def _embedded_jd_cv_improvement(
     candidate_profile, jd_position, jd_skills, semantic_similarity_score,
-    weighted_skill_score, matched_skills, missing_skills,
+    coverage_pct, matched_skills, missing_skills,
 ) -> Optional[dict]:
     from src.online.services import generate_cv_improvement_for_jd as _svc_improve
 
@@ -399,7 +399,7 @@ def _embedded_jd_cv_improvement(
             jd_position=jd_position,
             jd_skills=jd_skills,
             semantic_similarity_score=semantic_similarity_score,
-            weighted_skill_score=weighted_skill_score,
+            coverage_pct=coverage_pct,
             matched_skills=matched_skills,
             missing_skills=missing_skills,
         )
@@ -410,7 +410,7 @@ def _embedded_jd_cv_improvement(
 
 def _embedded_jd_application_email(
     candidate_profile, jd_skills, jd_text_preview,
-    semantic_similarity_score, weighted_skill_score, matched_skills,
+    semantic_similarity_score, coverage_pct, matched_skills,
     missing_skills, cv_review,
 ) -> Optional[dict]:
     from src.online.services import generate_application_email_for_jd as _svc_email
@@ -421,7 +421,7 @@ def _embedded_jd_application_email(
             jd_skills=jd_skills,
             jd_text_preview=jd_text_preview,
             semantic_similarity_score=semantic_similarity_score,
-            weighted_skill_score=weighted_skill_score,
+            coverage_pct=coverage_pct,
             matched_skills=matched_skills,
             missing_skills=missing_skills,
             cv_review=cv_review,
@@ -436,13 +436,13 @@ def generate_cv_improvement_for_jd(
     jd_position: str,
     jd_skills: list,
     semantic_similarity_score: float,
-    weighted_skill_score: float,
+    coverage_pct: float,
     matched_skills: list,
     missing_skills: list,
 ) -> Optional[dict]:
     """Sinh AI CV Improvement cho JD Comparison — tiếp nối AI CV Review (tự động, không cần bấm nút)."""
     args = (candidate_profile, jd_position, jd_skills, semantic_similarity_score,
-            weighted_skill_score, matched_skills, missing_skills)
+            coverage_pct, matched_skills, missing_skills)
     if _REMOTE:
         return _http_jd_cv_improvement(*args)
     return _embedded_jd_cv_improvement(*args)
@@ -453,7 +453,7 @@ def generate_application_email_for_jd(
     jd_skills: list,
     jd_text_preview: str,
     semantic_similarity_score: float,
-    weighted_skill_score: float,
+    coverage_pct: float,
     matched_skills: list,
     missing_skills: list,
     cv_review: Optional[dict] = None,
@@ -464,7 +464,7 @@ def generate_application_email_for_jd(
     gửi thật cho nhà tuyển dụng) — LLM tự đọc jd_text_preview.
     """
     args = (candidate_profile, jd_skills, jd_text_preview,
-            semantic_similarity_score, weighted_skill_score, matched_skills,
+            semantic_similarity_score, coverage_pct, matched_skills,
             missing_skills, cv_review)
     if _REMOTE:
         return _http_jd_application_email(*args)

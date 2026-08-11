@@ -9,8 +9,17 @@ Pipeline:
   4. Extract skills từ JD (regex → canonicalize)
   5. Match skills (candidate vs JD) → matched / missing
   6. Semantic similarity (CV text vs JD text) – gte-multilingual-base
-  7. Weighted Skill Score (heuristic weights, không có occupation profile)
+  7. Skill Score = số kỹ năng khớp / số kỹ năng JD yêu cầu
   8. AI CV Review cho JD context (jd_recommender)
+
+Vì sao KHÔNG dùng trọng số ở chế độ này: trọng số kỹ năng trong Occupation
+Profile được tính từ tần suất thật trên hàng chục nghìn tin tuyển dụng. Với MỘT
+tin tuyển dụng đơn lẻ thì không có dữ liệu thống kê nào để suy ra trọng số, nên
+mọi cách gán trọng số ở đây đều là phỏng đoán. Bản trước dùng bảng regex gán
+cứng 4 mức, kết quả gần như trùng hoàn toàn với tỉ lệ khớp đơn thuần
+(tương quan ~0,999) trong khi thứ tự trọng số lại sai (Python bị chấm thấp hơn
+"Machine Learning"). Vì vậy chế độ này dùng thẳng tỉ lệ khớp — trung thực về
+mức thông tin thực có, và người dùng đọc hiểu ngay.
 
 Module này còn điều phối 2 tính năng bổ trợ CHỈ dành cho chế độ 2 — AI CV
 Improvement và Application Email — tái dùng candidate profile + scores + skill
@@ -83,45 +92,6 @@ def _extract_position_hint(jd_text: str) -> str:
     return ""
 
 
-# ─── Heuristic skill weight cho JD (không có occupation profile) ──────────────
-
-# Trọng số cốt lõi — framework/technology chính của role
-_CORE_WEIGHT = 0.80
-# Trọng số phụ — tool/platform/supporting library
-_SUPPORT_WEIGHT = 0.50
-# Trọng số soft skill / method
-_SOFT_WEIGHT = 0.30
-# Trọng số mặc định
-_DEFAULT_WEIGHT = 0.60
-
-# Patterns gì → weight bao nhiêu
-_WEIGHT_SIGNALS: list[tuple[re.Pattern, float]] = [
-    (re.compile(r"(?i)\b(react|vue|angular|svelte|next\.?js|nuxt\.?js)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(flask|fastapi|django|express|node\.?js|nest\.?js)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(postgres|mysql|mongodb|redis|elasticsearch|clickhouse|"
-                r"sql\s*server|oracle)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(pytorch|tensorflow|keras|scikit|sklearn|scipy|pandas|numpy)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(grpc|graphql|websocket|rest\s*api|restful|api\s*design)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(kubernetes|k8s|docker|terraform|ansible|helm)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(aws|azure|gcp|google\s*cloud|cloud\s*(?:platform|aws?))\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(ci/?cd|jenkins|github\s*actions|gitlab\s*ci|bitbucket)\b"), _SUPPORT_WEIGHT),
-    (re.compile(r"(?i)\b(git|github|gitlab|bitbucket|jira|confluence|agile|scrum|kanban)\b"), _SUPPORT_WEIGHT),
-    (re.compile(r"(?i)\b(machine\s*learning|deep\s*learning|nlp|cv|computer\s*vision|"
-                r"llm|generative\s*ai|gen\s*ai)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(microservices|serverless|event[- ]?driven|eventbus)\b"), _CORE_WEIGHT),
-    (re.compile(r"(?i)\b(leadership|communication|problem[- ]solving|teamwork|"
-                r"presentation|mentoring)\b"), _SOFT_WEIGHT),
-]
-
-
-def _infer_skill_weight(skill: str) -> float:
-    """Heuristic weight cho skill trích từ JD (không có occupation profile)."""
-    for pat, weight in _WEIGHT_SIGNALS:
-        if pat.search(skill):
-            return weight
-    return _DEFAULT_WEIGHT
-
-
 # ─── Skill matching helper ────────────────────────────────────────────────────
 
 def _match_skills(candidate_skills: list[str], jd_skills: list[str]) -> tuple[list[str], list[str]]:
@@ -168,7 +138,7 @@ def compare_cv_with_jd(
     Returns:
         dict với keys:
           jd_filename, jd_position, jd_skills, jd_text_preview,
-          semantic_similarity_score, weighted_skill_score, coverage_pct,
+          semantic_similarity_score, coverage_pct,
           matched_skills, missing_skills, candidate_profile,
           ai_recommendation
 
@@ -246,16 +216,11 @@ def compare_cv_with_jd(
         f"({len(jd_skills)} total JD skills)"
     )
 
-    # ── Step 7: Weighted Skill Score ───────────────────────────────────────
-    if jd_skills:
-        # Sum weights của matched skills / sum weights của ALL JD skills
-        matched_w = sum(_infer_skill_weight(s) for s in matched_skills)
-        total_w = sum(_infer_skill_weight(s) for s in jd_skills)
-        weighted_skill_score = matched_w / total_w if total_w > 0 else 0.0
-    else:
-        weighted_skill_score = 0.0
+    # ── Step 7: Skill Score = số kỹ năng khớp / số kỹ năng JD yêu cầu ───────
     coverage_pct = len(matched_skills) / len(jd_skills) if jd_skills else 0.0
-    logger.info(f"Weighted Skill Score: {weighted_skill_score:.3f}, Coverage: {coverage_pct:.1%}")
+    logger.info(
+        f"Skill Score: {len(matched_skills)}/{len(jd_skills)} = {coverage_pct:.1%}"
+    )
 
     # ── Step 8: Semantic similarity ──────────────────────────────────────────
     # compute_semantic_score nhận 2 embedding (list[float]), không phải raw text.
@@ -286,7 +251,6 @@ def compare_cv_with_jd(
         missing_skills=missing_skills,
         extra_skills=extra_skills,
         semantic_similarity_score=semantic_similarity_score,
-        weighted_skill_score=weighted_skill_score,
         coverage_pct=coverage_pct,
     )
     if ai_recommendation is None:
@@ -303,7 +267,6 @@ def compare_cv_with_jd(
         "jd_skills": jd_skills,
         "jd_text_preview": jd_text_preview,
         "semantic_similarity_score": float(semantic_similarity_score),
-        "weighted_skill_score": float(weighted_skill_score),
         "coverage_pct": float(coverage_pct),
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
@@ -318,12 +281,18 @@ def compare_cv_with_jd(
 def _rebuild_context(
     candidate_profile: dict,
     semantic_similarity_score: float,
-    weighted_skill_score: float,
+    coverage_pct: float,
     matched_skills: list[str],
     missing_skills: list[str],
 ) -> tuple[CandidateProfile, ScoreBreakdown, SkillGap]:
     """Dựng lại CandidateProfile/ScoreBreakdown/SkillGap từ dict đã tính sẵn (gửi
-    ngược từ frontend) — dùng chung cho cả 2 hàm sinh nội dung bổ trợ dưới đây."""
+    ngược từ frontend) — dùng chung cho cả 2 hàm sinh nội dung bổ trợ dưới đây.
+
+    Lưu ý: ScoreBreakdown là kiểu dùng CHUNG với chế độ chọn nghề (nơi chỉ số thứ
+    hai đúng là weighted_skill_score tính từ trọng số thật). Ở chế độ JD, ô đó
+    mang coverage_pct (tỉ lệ khớp) — các prompt LLM cho JD gọi đúng tên "Skill
+    Score" nên không gây hiểu nhầm cho mô hình.
+    """
     profile = CandidateProfile(
         skills=candidate_profile.get("skills", []),
         experience=candidate_profile.get("experience", []),
@@ -333,7 +302,7 @@ def _rebuild_context(
     )
     scores = ScoreBreakdown(
         semantic_similarity_score=semantic_similarity_score,
-        weighted_skill_score=weighted_skill_score,
+        weighted_skill_score=coverage_pct,
     )
     skill_gap = SkillGap(matched_skills=matched_skills, missing_skills=missing_skills)
     return profile, scores, skill_gap
@@ -344,7 +313,7 @@ def generate_cv_improvement_for_jd(
     jd_position: str,
     jd_skills: list[str],
     semantic_similarity_score: float,
-    weighted_skill_score: float,
+    coverage_pct: float,
     matched_skills: list[str],
     missing_skills: list[str],
 ) -> Optional[dict]:
@@ -355,11 +324,12 @@ def generate_cv_improvement_for_jd(
         candidate_profile: dict (skills/experience/projects/education/raw_text) —
             từ kết quả compare_cv_with_jd()["candidate_profile"].
         jd_position, jd_skills: bối cảnh JD đã trích ở bước so sánh.
+        coverage_pct: tỉ lệ kỹ năng JD mà ứng viên đáp ứng (matched/total).
     """
     from src.online.cv_improvement.jd_improver import generate_jd_cv_improvement
 
     profile, scores, skill_gap = _rebuild_context(
-        candidate_profile, semantic_similarity_score, weighted_skill_score,
+        candidate_profile, semantic_similarity_score, coverage_pct,
         matched_skills, missing_skills,
     )
     return generate_jd_cv_improvement(
@@ -376,7 +346,7 @@ def generate_application_email_for_jd(
     jd_skills: list[str],
     jd_text_preview: str,
     semantic_similarity_score: float,
-    weighted_skill_score: float,
+    coverage_pct: float,
     matched_skills: list[str],
     missing_skills: list[str],
     cv_review: Optional[dict] = None,
@@ -397,7 +367,7 @@ def generate_application_email_for_jd(
     from src.online.email_generation.jd_email_generator import generate_jd_application_email
 
     profile, scores, skill_gap = _rebuild_context(
-        candidate_profile, semantic_similarity_score, weighted_skill_score,
+        candidate_profile, semantic_similarity_score, coverage_pct,
         matched_skills, missing_skills,
     )
     return generate_jd_application_email(

@@ -77,7 +77,7 @@ _USER_TEMPLATE = """Hãy soạn email ứng tuyển dựa trên Job Description 
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ để tham khảo — KHÔNG nhắc số điểm trong email)
 - Semantic Similarity: {semantic:.0f}
-- Weighted Skill Score: {weighted:.0f}
+- Tỉ lệ đáp ứng kỹ năng JD: {coverage:.0f}
 
 ## Trích đoạn Job Description
 {jd_text_preview}
@@ -189,7 +189,9 @@ def generate_jd_application_email(
 
     user_prompt = _USER_TEMPLATE.format(
         semantic=scores.semantic_similarity_score * 100,
-        weighted=scores.weighted_skill_score * 100,
+        # Chế độ JD không có trọng số thật; ô thứ hai của ScoreBreakdown mang
+        # tỉ lệ đáp ứng (matched/total) — xem _rebuild_context ở jd_comparison_service.
+        coverage=scores.weighted_skill_score * 100,
         jd_text_preview=(jd_text_preview or "")[:1500],
         jd_skills=_fmt_inline(jd_skills, 30),
         cand_skills=_fmt_inline(candidate_profile.skills, 30),

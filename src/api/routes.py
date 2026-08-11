@@ -203,7 +203,7 @@ async def compare_jd(
       2. Lấy text JD (từ file hoặc từ nội dung dán).
       3. Build candidate profile (hybrid regex + LLM).
       4. Extract skills từ JD, match với candidate skills.
-      5. Tính 2 chỉ số độc lập (semantic_similarity_score + weighted_skill_score).
+      5. Tính 2 chỉ số độc lập (semantic_similarity_score + coverage_pct).
       6. AI Recommendation (LLM) với context JD cụ thể.
     """
     cv_bytes = await cv_file.read()
@@ -248,7 +248,6 @@ async def compare_jd(
         jd_skills=result["jd_skills"],
         jd_text_preview=result["jd_text_preview"],
         semantic_similarity_score=result["semantic_similarity_score"],
-        weighted_skill_score=result["weighted_skill_score"],
         coverage_pct=result["coverage_pct"],
         matched_skills=result["matched_skills"],
         missing_skills=result["missing_skills"],
@@ -267,7 +266,7 @@ def jd_cv_improvement(req: JDCVImprovementRequest) -> dict:
             jd_position=req.jd_position,
             jd_skills=req.jd_skills,
             semantic_similarity_score=req.semantic_similarity_score,
-            weighted_skill_score=req.weighted_skill_score,
+            coverage_pct=req.coverage_pct,
             matched_skills=req.matched_skills,
             missing_skills=req.missing_skills,
         )
@@ -287,7 +286,7 @@ def jd_application_email(req: JDApplicationEmailRequest) -> dict:
             jd_skills=req.jd_skills,
             jd_text_preview=req.jd_text_preview,
             semantic_similarity_score=req.semantic_similarity_score,
-            weighted_skill_score=req.weighted_skill_score,
+            coverage_pct=req.coverage_pct,
             matched_skills=req.matched_skills,
             missing_skills=req.missing_skills,
             cv_review=req.cv_review,
@@ -428,7 +427,6 @@ async def compare_jd_saved(
         jd_skills=result["jd_skills"],
         jd_text_preview=result["jd_text_preview"],
         semantic_similarity_score=result["semantic_similarity_score"],
-        weighted_skill_score=result["weighted_skill_score"],
         coverage_pct=result["coverage_pct"],
         matched_skills=result["matched_skills"],
         missing_skills=result["missing_skills"],

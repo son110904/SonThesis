@@ -58,7 +58,7 @@ _USER_TEMPLATE_JD = """Hãy review CV của ứng viên cho vị trí: "{jd_posi
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ hỗ trợ)
 - Semantic Similarity: {semantic:.0f}
-- Weighted Skill Score: {weighted:.0f}
+- Tỉ lệ đáp ứng kỹ năng JD: {coverage:.0f}
 
 ## Hồ sơ ứng viên (NGUỒN SỰ THẬT)
 - Kỹ năng: {cand_skills}
@@ -145,7 +145,6 @@ def generate_jd_recommendation(
     missing_skills: list[str],
     extra_skills: list[str],
     semantic_similarity_score: float,
-    weighted_skill_score: float,
     coverage_pct: float,
     llm: Optional[LLMClient] = None,
 ) -> Optional[dict]:
@@ -166,7 +165,7 @@ def generate_jd_recommendation(
         jd_text_preview=jd_text[:2000],
         jd_skills=_fmt_inline(jd_skills, 30),
         semantic=semantic_similarity_score * 100,
-        weighted=weighted_skill_score * 100,
+        coverage=coverage_pct * 100,
         cand_skills=_fmt_inline(candidate_profile.skills, 30),
         cand_exp=_fmt_bullets(candidate_profile.experience, 8),
         cand_proj=_fmt_bullets(candidate_profile.projects, 8),

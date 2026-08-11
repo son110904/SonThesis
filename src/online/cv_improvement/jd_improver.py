@@ -100,7 +100,7 @@ _USER_TEMPLATE = """Đây là bước tiếp theo SAU KHI đã review CV cho v�
 
 ## Tín hiệu điểm số (THANG 0-100, chỉ để tham khảo)
 - Semantic Similarity: {semantic:.0f}
-- Weighted Skill Score: {weighted:.0f}
+- Tỉ lệ đáp ứng kỹ năng JD: {coverage:.0f}
 
 ## Kỹ năng yêu cầu (trích từ Job Description)
 {jd_skills}
@@ -211,7 +211,9 @@ def generate_jd_cv_improvement(
     user_prompt = _USER_TEMPLATE.format(
         jd_position=jd_position or "(không xác định được)",
         semantic=scores.semantic_similarity_score * 100,
-        weighted=scores.weighted_skill_score * 100,
+        # Chế độ JD không có trọng số thật; ô thứ hai của ScoreBreakdown mang
+        # tỉ lệ đáp ứng (matched/total) — xem _rebuild_context ở jd_comparison_service.
+        coverage=scores.weighted_skill_score * 100,
         jd_skills=_fmt_inline(jd_skills, 30),
         cand_skills=_fmt_inline(candidate_profile.skills, 30),
         cand_exp=_fmt_bullets(candidate_profile.experience, 8),

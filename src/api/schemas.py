@@ -126,10 +126,11 @@ class JDComparisonResponse(BaseModel):
     jd_skills: list[str] = []         # skill trích từ JD (regex)
     jd_text_preview: str = ""         # ~500 ký tự đầu của JD
 
-    # 2 chỉ số độc lập (giống AnalyzeResponse nhưng không có occupation_key)
+    # 2 chỉ số độc lập. KHÔNG có weighted_skill_score như chế độ chọn nghề: với
+    # một tin tuyển dụng đơn lẻ không có dữ liệu thống kê để suy ra trọng số kỹ
+    # năng, nên chế độ này dùng thẳng tỉ lệ đáp ứng.
     semantic_similarity_score: float = Field(..., ge=0, le=1)
-    weighted_skill_score: float = Field(..., ge=0, le=1)
-    coverage_pct: float = Field(..., ge=0, le=1)  # matched/required (dễ hiểu cho user)
+    coverage_pct: float = Field(..., ge=0, le=1)  # matched/required
 
     matched_skills: list[str] = []
     missing_skills: list[str] = []
@@ -147,7 +148,7 @@ class JDCVImprovementRequest(BaseModel):
     jd_position: str = ""
     jd_skills: list[str] = []
     semantic_similarity_score: float = Field(..., ge=0, le=1)
-    weighted_skill_score: float = Field(..., ge=0, le=1)
+    coverage_pct: float = Field(..., ge=0, le=1)
     matched_skills: list[str] = []
     missing_skills: list[str] = []
 
@@ -163,7 +164,7 @@ class JDApplicationEmailRequest(BaseModel):
     jd_skills: list[str] = []
     jd_text_preview: str = ""
     semantic_similarity_score: float = Field(..., ge=0, le=1)
-    weighted_skill_score: float = Field(..., ge=0, le=1)
+    coverage_pct: float = Field(..., ge=0, le=1)
     matched_skills: list[str] = []
     missing_skills: list[str] = []
     cv_review: Optional[dict] = None
