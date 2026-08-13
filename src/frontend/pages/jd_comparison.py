@@ -132,7 +132,6 @@ def render_jd_result() -> None:
 
     matched_count = len(result.get("matched_skills", []))
     total_jd_skills = len(result.get("jd_skills", []))
-    coverage_pct = result.get("coverage_pct", 0.0)
 
     # ── Header ───────────────────────────────────────────────────────────────
     hdr_l, hdr_r = st.columns([3, 1])
@@ -171,9 +170,9 @@ def render_jd_result() -> None:
     st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
     # ── Row 1: 1 metric card (rộng gấp đôi) + shiba ───────────────────────────
-    # Chế độ JD chỉ còn Semantic Similarity — đã bỏ hẳn thẻ "Tỉ lệ đáp ứng" khỏi
-    # khu vực điểm số (coverage_pct vẫn hiển thị riêng ở thanh tiến trình bên dưới,
-    # gắn liền với danh sách kỹ năng khớp/thiếu nên giữ lại chỗ đó là hợp lý hơn).
+    # Chế độ JD chỉ còn Semantic Similarity. coverage_pct (tỉ lệ đáp ứng kỹ năng)
+    # không hiển thị dạng điểm số/thanh tiến trình ở đâu trên trang này nữa — số
+    # lượng khớp/tổng vẫn thấy được qua header phía trên và 2 cột badge bên dưới.
     m1, shiba_col = st.columns([2, 1], gap="medium")
     with m1:
         render_metric_card("Semantic Similarity", result["semantic_similarity_score"])
@@ -198,15 +197,6 @@ def render_jd_result() -> None:
         st.markdown('<div class="skill-sub-label amber">● KỸ NĂNG CÒN THIẾU</div>', unsafe_allow_html=True)
         render_skill_badges(result.get("missing_skills", []), kind="missing", max_items=24,
                             empty_text="Tuyệt vời — không thiếu kỹ năng quan trọng nào.")
-
-    # ── Thanh tỉ lệ đáp ứng ──────────────────────────────────────────────────
-    st.markdown(
-        f"""
-        <div class="section-h">📊 Đáp ứng {matched_count}/{total_jd_skills} kỹ năng JD yêu cầu</div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.progress(float(coverage_pct), text=f"{coverage_pct:.0%} kỹ năng yêu cầu được đáp ứng")
 
     # ── HERO: AI CV Review cho JD cụ thể ──────────────────────────────────────
     ai_rec = result.get("ai_recommendation")
