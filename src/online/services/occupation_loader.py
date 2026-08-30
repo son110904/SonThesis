@@ -38,9 +38,26 @@ _FIELD_DISPLAY_OVERRIDES: dict[str, str] = {
     "du_lich_nha_hang_khach_san_dich_vu": "Du lịch, nhà hàng, khách sạn, dịch vụ",
     "giao_duc_đao_tao_nghien_cuu": "Giáo dục và đào tạo",
     "kinh_doanh_ban_hang_cham_soc_khach_hang": "Kinh doanh, bán hàng, chăm sóc khách hàng",
+    "ky_thuat_đien_đien_tu_vien_thong": "Kỹ thuật điện, điện tử, viễn thông",
+    "logistics_van_tai_chuoi_cung_ung": "Logistics, vận tải, chuỗi cung ứng",
+    "marketing_truyen_thong_quang_cao_noi_dung": "Marketing, truyền thông, quảng cáo, nội dung",
+    "ngon_ngu_dich_thuat": "Ngôn ngữ, dịch thuật",
     "nhan_su_hanh_chinh_phap_che_tu_van": "Nhân sự, hành chính, pháp chế, tư vấn",
     "nong_nghiep_nang_luong_moi_truong": "Nông nghiệp, năng lượng, môi trường",
+    # Nhãn gốc "sản xuất lao động phổ thông cơ khí" quá dài và khó đọc — rút gọn.
+    "san_xuat_lao_đong_pho_thong_co_khi": "Sản xuất, cơ khí",
+    "tai_chinh_ke_toan_ngan_hang_bao_hiem": "Tài chính, kế toán, ngân hàng, bảo hiểm",
+    "thiet_ke_nghe_thuat_giai_tri_truyen_hinh_bao_chi": "Thiết kế, nghệ thuật, giải trí, truyền hình, báo chí",
+    "xay_dung_kien_truc_bat_đong_san": "Xây dựng, kiến trúc, bất động sản",
     "y_te_duoc_cham_soc_suc_khoe_cong_nghe_sinh_hoc": "Y tế, dược, chăm sóc sức khỏe, công nghệ sinh học",
+}
+
+# Vị trí con bị gán nhầm lĩnh vực trong dữ liệu nguồn → ẩn khỏi dropdown.
+# Ví dụ "Kiến trúc sư" nằm dưới lĩnh vực Thiết kế/Nghệ thuật/Báo chí, trong khi
+# nghề này thuộc Xây dựng - Kiến trúc. Ẩn ở tầng hiển thị thay vì xoá file
+# profile, để không phải build lại toàn bộ cơ sở tri thức.
+_HIDDEN_SUB_OCCUPATIONS: set[str] = {
+    "thiet_ke_nghe_thuat_giai_tri_truyen_hinh_bao_chi__architect",
 }
 
 
@@ -59,9 +76,18 @@ def _load_all() -> dict[str, dict]:
                 data = json.load(f)
             key = path.stem
             data["_key"] = key
-            data["_display"] = _FIELD_DISPLAY_OVERRIDES.get(key) or _display_name(
-                data.get("occupation", key)
-            )
+            parent = data.get("_parent")
+            if parent and data.get("_sub_display"):
+                # Nghề con: dựng tên từ (lĩnh vực cha đã chuẩn hoá) + tên vị trí.
+                # Nếu để _display_name() suy từ trường "occupation" thì ra dạng
+                # thô còn nguyên slug tiếng Anh, vd "Xây dựng kiến trúc bất động
+                # sản / architect".
+                parent_display = _FIELD_DISPLAY_OVERRIDES.get(parent) or _display_name(parent)
+                data["_display"] = f"{parent_display} / {data['_sub_display']}"
+            else:
+                data["_display"] = _FIELD_DISPLAY_OVERRIDES.get(key) or _display_name(
+                    data.get("occupation", key)
+                )
             result[key] = data
         except Exception as e:  # noqa: BLE001
             logger.error(f"Lỗi đọc occupation profile {path.name}: {e}")
@@ -86,6 +112,8 @@ def list_occupations() -> list[dict]:
     all_profiles = _load_all()
     items = []
     for key, prof in all_profiles.items():
+        if key in _HIDDEN_SUB_OCCUPATIONS:
+            continue
         parent_key = prof.get("_parent")
         is_sub = bool(parent_key)
         if is_sub:

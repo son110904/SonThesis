@@ -64,11 +64,11 @@ def render_jd_comparison_page() -> None:
     # Render loading screen 1 lần rồi chạy API ngay (giống scanning.py —
     # spinner + render result → rerun để chuyển sang trang kết quả).
     render_scanning(
-        title="🐾 Shiba đang so sánh CV với JD…",
+        title="Shiba đang so sánh CV với JD…",
         quotes=(
             "Đang bóc tách văn bản từ CV & JD…",
             "Trích kỹ năng & đối chiếu hai hồ sơ…",
-            "Sinh nhận xét cá nhân hóa cho JD này, gâu gâu! 🐶",
+            "Sinh nhận xét cá nhân hóa cho JD này!",
         ),
         steps=(
             "Bóc tách văn bản CV & JD",
@@ -159,7 +159,7 @@ def render_jd_result() -> None:
     st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
     # ── JD Summary ────────────────────────────────────────────────────────────
-    with st.expander("📋 Nội dung JD đã tải lên", expanded=False):
+    with st.expander("Nội dung JD đã tải lên", expanded=False):
         jd_preview = result.get("jd_text_preview", "")
         st.markdown(f"**Vị trí:** {html.escape(result.get('jd_position') or '(không xác định)')}")
         st.markdown(f"**Trích đoạn đầu JD:**\n{jd_preview[:800]}")
@@ -205,20 +205,20 @@ def render_jd_result() -> None:
     # Dùng "is not None" vì {} là falsy → không dùng `or`
     review = ai_rec if ai_rec is not None else cv_review_data
     if review:
-        st.markdown('<div class="section-h">🤖 Nhận xét chi tiết từ Shiba AI</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-h">Nhận xét chi tiết từ Shiba AI</div>', unsafe_allow_html=True)
         render_cv_review(review)
     else:
         st.info(
-            "📝 Không có AI Recommendation cho JD này (cần OPENAI_API_KEY để sinh nhận xét cá nhân hóa)."
+            "Không có AI Recommendation cho JD này (cần OPENAI_API_KEY để sinh nhận xét cá nhân hóa)."
         )
 
     # ── AI CV Improvement: tiếp nối AI CV Review, sinh tự động (nếu có) ───────
     if result.get("cv_improvement"):
-        st.markdown('<div class="section-h">✍️ Gợi ý cải thiện CV</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-h">Gợi ý cải thiện CV</div>', unsafe_allow_html=True)
         render_cv_improvement(result["cv_improvement"])
 
     # ── AI Application Email: CHỈ sinh khi người dùng bấm nút ─────────────────
-    st.markdown('<div class="section-h">✉️ Chuẩn bị ứng tuyển</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-h">Chuẩn bị ứng tuyển</div>', unsafe_allow_html=True)
     jd_application_email = st.session_state.get("jd_application_email")
     if jd_application_email:
         render_application_email(jd_application_email)
@@ -227,7 +227,7 @@ def render_jd_result() -> None:
         # phải bấm lần thứ hai.
         do_generate = st.button("↻ Tạo lại email khác", key="jd_regen_email")
     else:
-        do_generate = st.button("✉️ Tạo email ứng tuyển", type="primary", key="jd_gen_email")
+        do_generate = st.button("Tạo email ứng tuyển", type="primary", key="jd_gen_email")
 
     if do_generate:
         with st.spinner("Shiba đang soạn email ứng tuyển…"):

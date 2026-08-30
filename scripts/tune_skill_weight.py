@@ -178,6 +178,7 @@ def part_a() -> None:
     lab = val["label"].values
     base = score_all(val, comps, CUR_ALPHA, CUR_TIER_SCORE)
     rng = np.random.default_rng(0)
+    better, worse, tie = [], [], []
     for a in [0.3, 0.4, 0.5, 0.6, 1.0]:
         p = score_all(val, comps, a, CUR_TIER_SCORE)
         d = np.array([
@@ -185,12 +186,28 @@ def part_a() -> None:
             for i in (rng.integers(0, len(lab), len(lab)) for _ in range(2000))
         ])
         lo, hi = np.percentile(d, [2.5, 97.5])
-        verdict = "CÓ ý nghĩa" if (lo > 0 or hi < 0) else "KHÔNG có ý nghĩa"
+        sig = lo > 0 or hi < 0
+        verdict = "CÓ ý nghĩa" if sig else "KHÔNG có ý nghĩa"
         print(f"  ALPHA={a}: Δ={d.mean():+.4f}  KTC95%=[{lo:+.4f}, {hi:+.4f}]  → {verdict}")
+        (better if (sig and lo > 0) else worse if sig else tie).append((a, d.mean()))
 
-    print(f"\nKết luận: vùng ALPHA 0.3–0.8 gần như bằng phẳng, chênh lệch không đáng kể.")
-    print(f"ALPHA=1.0 (bỏ hẳn TF-IDF) kém hơn CÓ ý nghĩa → thành phần độ đặc trưng là cần thiết.")
-    print(f"Giữ ALPHA={CUR_ALPHA} vì nằm trong vùng ổn định và ưu tiên Frequency đúng như lập luận thiết kế.")
+    # Kết luận SUY TỪ kết quả vừa chạy, không viết cứng — bản trước hardcode câu
+    # "vùng 0.3–0.8 chênh lệch không đáng kể", mâu thuẫn với chính output ở trên
+    # khi alpha 0.5/0.6 hoá ra tốt hơn mốc có ý nghĩa thống kê.
+    print("\nKết luận:")
+    if tie:
+        print(f"  - Không phân biệt được với ALPHA={CUR_ALPHA}: "
+              + ", ".join(f"{a}" for a, _ in tie))
+    if better:
+        print("  - Tốt hơn mốc CÓ ý nghĩa (nhưng độ lớn nhỏ): "
+              + ", ".join(f"{a} (Δ={m:+.4f})" for a, m in better))
+    if worse:
+        print("  - Kém hơn mốc CÓ ý nghĩa: "
+              + ", ".join(f"{a} (Δ={m:+.4f})" for a, m in worse))
+    print(f"\n  → Giữ ALPHA={CUR_ALPHA}: mức chênh của các giá trị nhỉnh hơn chỉ ~2% tương đối,")
+    print("    trong khi tập hiệu chỉnh này có phân phối trọng số khác hẳn KB thật")
+    print("    (xem phần GIỚI HẠN ở docstring) → bám sát cực đại của nó là quá khớp tham số.")
+    print("    Điều thí nghiệm khẳng định chắc chắn: bỏ hẳn TF-IDF (ALPHA=1.0) thì kém hơn.")
 
 
 # ══════════════════════════════════════════════════════════════════════════

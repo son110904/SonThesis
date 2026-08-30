@@ -68,11 +68,9 @@ def render_metric_card(label: str, score_0_1: float) -> None:
 
     pct = round(score_0_1 * 100, 1)
     color = score_color(score_0_1)
-    icon = "🧠" if "Semantic" in label else "⭐"
     st.markdown(
         f"""
         <div class="metric-card-v2">
-          <div class="mc-icon">{icon}</div>
           <div class="mc-label">{html.escape(label)}</div>
           <div class="mc-value" style="color:{color}">{pct:g}<span>/100</span></div>
           <div class="mc-track">
@@ -102,7 +100,7 @@ def render_recommendation_card(markdown_text: str | None) -> None:
     st.markdown(f'<div class="ai-rec-wrap">{body_html}</div>', unsafe_allow_html=True)
 
 
-def _review_block(title: str, icon: str, items: list[str], accent: str = "var(--accent)") -> str:
+def _review_block(title: str, items: list[str], accent: str = "var(--accent)") -> str:
     """Render 1 khối nhận xét (list bullet) thành HTML."""
     if not items:
         body = '<div class="hint">(không có nhận xét)</div>'
@@ -111,7 +109,7 @@ def _review_block(title: str, icon: str, items: list[str], accent: str = "var(--
         body = f'<ul class="rv-list">{lis}</ul>'
     return (
         f'<div class="rv-card">'
-        f'<div class="rv-card-title" style="color:{accent}">{icon} {html.escape(title)}</div>'
+        f'<div class="rv-card-title" style="color:{accent}">{html.escape(title)}</div>'
         f"{body}</div>"
     )
 
@@ -135,7 +133,7 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
         tips_html = f'<div class="rv-warn-title">Cần bổ sung:</div><ul class="rv-list">{tips}</ul>' if tips else ""
         st.markdown(
             f'<div class="rv-warn">'
-            f'<div class="rv-warn-label">⚠️ CV chưa đủ thông tin để đánh giá</div>'
+            f'<div class="rv-warn-label">CV chưa đủ thông tin để đánh giá</div>'
             f'<div class="rv-warn-body">{overall}</div>'
             f'{tips_html}'
             f'</div>',
@@ -147,7 +145,7 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
     overall = review.get("overall_assessment") or ""
     if overall:
         st.markdown(
-            f'<div class="rv-overall"><div class="rv-overall-label">📋 Đánh giá tổng quan</div>'
+            f'<div class="rv-overall"><div class="rv-overall-label">Đánh giá tổng quan</div>'
             f'<div class="rv-overall-body">{html.escape(overall)}</div></div>',
             unsafe_allow_html=True,
         )
@@ -155,10 +153,10 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
     # 2-5. Các khối nhận xét — xếp DỌC trong MỘT cột để không bị lệch khung;
     # mỗi .rv-card cao theo nội dung (height auto) nên khung luôn ôm sát số chữ.
     blocks = (
-        _review_block("Điểm mạnh", "💪", review.get("strengths", []), "#2e7d5b")
-        + _review_block("Chất lượng CV", "📝", review.get("cv_quality", []), "#b06a00")
-        + _review_block("Kỹ năng còn thiếu", "🔍", review.get("missing_skills", []), "#b54708")
-        + _review_block("Khuyến nghị cải thiện", "✦", review.get("recommendations", []), "var(--accent)")
+        _review_block("Điểm mạnh", review.get("strengths", []), "#2e7d5b")
+        + _review_block("Chất lượng CV", review.get("cv_quality", []), "#b06a00")
+        + _review_block("Kỹ năng còn thiếu", review.get("missing_skills", []), "#b54708")
+        + _review_block("Khuyến nghị cải thiện", review.get("recommendations", []), "var(--accent)")
     )
     st.markdown(f'<div class="rv-stack">{blocks}</div>', unsafe_allow_html=True)
 
@@ -175,7 +173,7 @@ def render_cv_review(review: dict | None, fallback_markdown: str | None = None) 
             )
         st.markdown(
             '<div class="rv-card"><div class="rv-card-title" style="color:var(--accent)">'
-            "🗺️ Lộ trình phát triển</div>" + "".join(steps_html) + "</div>",
+            "Lộ trình phát triển</div>" + "".join(steps_html) + "</div>",
             unsafe_allow_html=True,
         )
 
@@ -188,9 +186,9 @@ def render_cv_improvement(improvement: dict) -> None:
     import streamlit as st
 
     blocks = (
-        _review_block("Bố cục CV", "🗂️", improvement.get("structure_review", []), "#6a4fb0")
-        + _review_block("Chất lượng diễn đạt", "🖋️", improvement.get("writing_review", []), "#b06a00")
-        + _review_block("Chính tả & ngữ pháp", "🔤", improvement.get("grammar_review", []), "#2e7d5b")
+        _review_block("Bố cục CV", improvement.get("structure_review", []), "#6a4fb0")
+        + _review_block("Chất lượng diễn đạt", improvement.get("writing_review", []), "#b06a00")
+        + _review_block("Chính tả & ngữ pháp", improvement.get("grammar_review", []), "#2e7d5b")
     )
     st.markdown(f'<div class="rv-stack">{blocks}</div>', unsafe_allow_html=True)
 
@@ -208,7 +206,7 @@ def render_cv_improvement(improvement: dict) -> None:
             )
         st.markdown(
             '<div class="rv-card"><div class="rv-card-title" style="color:var(--accent)">'
-            "✨ Gợi ý viết lại bullet</div>" + "".join(rows) + "</div>",
+            "Gợi ý viết lại bullet</div>" + "".join(rows) + "</div>",
             unsafe_allow_html=True,
         )
 
@@ -222,12 +220,12 @@ def render_application_email(email: dict) -> None:
     highlights = email.get("matching_highlights", [])
 
     st.markdown(
-        f'<div class="rv-overall"><div class="rv-overall-label">✉️ {subject}</div>'
+        f'<div class="rv-overall"><div class="rv-overall-label">{subject}</div>'
         f'<div class="rv-overall-body">{body_html}</div></div>',
         unsafe_allow_html=True,
     )
     if highlights:
         st.markdown(
-            _review_block("Điểm nhấn phù hợp với vị trí", "⭐", highlights, "#2e7d5b"),
+            _review_block("Điểm nhấn phù hợp với vị trí", highlights, "#2e7d5b"),
             unsafe_allow_html=True,
         )

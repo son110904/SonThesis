@@ -22,19 +22,15 @@ def _workspace_html() -> str:
       <span class="ws-particle p3"></span><span class="ws-particle p4"></span>
       {shiba}
       <div class="ws-chip c1">
-        <span class="wc-ico">📄</span>
         <span><span class="wc-k">Resume</span><br><span class="wc-v">Đã tải lên</span></span>
       </div>
       <div class="ws-chip c2">
-        <span class="wc-ico">🎯</span>
         <span><span class="wc-k">ATS Match</span><br><span class="wc-v good">94%</span></span>
       </div>
       <div class="ws-chip c3">
-        <span class="wc-ico">⚡</span>
         <span><span class="wc-k">Kỹ năng</span><br><span class="wc-v">Đã phát hiện 27 skills</span></span>
       </div>
       <div class="ws-chip c4">
-        <span class="wc-ico">🧠</span>
         <span><span class="wc-k">Semantic</span><br><span class="wc-v">Đang khớp…</span></span>
       </div>
     </div>
@@ -51,7 +47,7 @@ def render_landing() -> None:
             """
             <div class="land-hero" style="padding: 2.4rem 0 0.5rem; min-height: 300px; display:flex; flex-direction:column; justify-content:center">
               <div class="land-rise" style="--d:0.03s">
-                <span class="hero-badge"><span class="spark">✨</span> AI Career Intelligence</span>
+                <span class="hero-badge">AI Career Intelligence</span>
               </div>
               <div class="hero-title land-rise" style="--d:0.12s">
                 Nâng tầm sự nghiệp cùng<br>
@@ -84,10 +80,10 @@ def render_landing() -> None:
             <div class="social-proof land-rise" style="--d:0.5s">
               <div class="sp-label">Được xây dựng trên nền tảng công nghệ</div>
               <div class="sp-row">
-                <span class="sp-badge"><span class="spb-ico">🧠</span> gte-multilingual</span>
-                <span class="sp-badge"><span class="spb-ico">🤖</span> GPT-4o</span>
-                <span class="sp-badge"><span class="spb-ico">📊</span> 97 nhóm nghề</span>
-                <span class="sp-badge"><span class="spb-ico">⚡</span> Semantic Matching</span>
+                <span class="sp-badge">gte-multilingual</span>
+                <span class="sp-badge">GPT-4o</span>
+                <span class="sp-badge">97 nhóm nghề</span>
+                <span class="sp-badge">Semantic Matching</span>
               </div>
             </div>
             """,

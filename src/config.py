@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # ── Đường dẫn gốc ──────────────────────────────────────────────────────────
 ROOT_DIR: Path = Path(__file__).resolve().parent.parent
@@ -17,6 +18,7 @@ OCCUPATION_PROFILES_DIR: Path = DATA_DIR / "occupation_profiles"
 # ── Database & lưu trữ CV người dùng (Authentication) ───────────────────────
 DB_PATH: Path = DATA_DIR / "app.db"
 USER_CV_DIR: Path = DATA_DIR / "user_cvs"
+VIETNAM_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
 # ── File dữ liệu ────────────────────────────────────────────────────────────
 JD_FILE: Path = DATA_DIR / "VietJobs JD.csv"

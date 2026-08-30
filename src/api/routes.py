@@ -17,7 +17,10 @@ Authentication (hỗ trợ trải nghiệm — lưu 1 CV/tài khoản để tái
     POST /auth/register       đăng ký tài khoản
     POST /auth/login          đăng nhập
     POST /auth/cv             upload/ghi đè CV đã lưu của tài khoản
-    GET  /auth/cv/{user_id}   thông tin CV đã lưu (404 nếu chưa có)
+    GET  /auth/cv/{user_id}   thông tin CV đang dùng (404 nếu chưa có)
+    GET  /auth/cv/{id}/history      lịch sử CV đã tải
+    GET  /auth/cv/{id}/file/{cv_id} tải về 1 CV trong lịch sử
+    POST /auth/cv/activate         chọn CV trong lịch sử để dùng
     POST /analyze-saved       phân tích CV ĐÃ LƯU với 1 nghề (không cần upload lại)
     POST /compare-jd-saved    so sánh CV ĐÃ LƯU với 1 JD (không cần upload lại CV)
 """
@@ -27,7 +30,9 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from urllib.parse import quote
+
+from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 
 from src.online.extraction_step2.text_extractor import UnsupportedFileType
 from src.online.services import (
@@ -40,6 +45,10 @@ from src.online.services import (
     generate_cv_improvement_for_jd,
     generate_cv_improvement_for_occupation,
     get_cv_info_for_user,
+    list_cv_history_for_user,
+    read_cv_file_for_user,
+    activate_cv_for_user,
+    delete_cv_for_user,
     list_occupations,
     login_user,
     register_user,
@@ -59,6 +68,8 @@ from src.api.schemas import (
     CandidateProfileOut,
     CVImprovementRequest,
     CVInfoOut,
+    CVHistoryOut,
+    ActivateCVRequest,
     JDApplicationEmailRequest,
     JDComparisonResponse,
     JDCVImprovementRequest,
@@ -328,7 +339,7 @@ async def auth_upload_cv(
     user_id: int = Form(...),
     file: UploadFile = File(..., description="CV dạng PDF/DOCX/MD"),
 ) -> CVInfoOut:
-    """Upload/ghi đè CV đã lưu của tài khoản."""
+    """Upload CV cho tài khoản — tạo bản ghi mới, CV cũ được giữ trong lịch sử."""
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="File rỗng.")
@@ -340,11 +351,62 @@ async def auth_upload_cv(
 
 @router.get("/auth/cv/{user_id}", response_model=CVInfoOut)
 def auth_get_cv(user_id: int) -> CVInfoOut:
-    """Thông tin CV đã lưu của tài khoản (404 nếu chưa upload)."""
+    """Thông tin CV ĐANG DÙNG của tài khoản (404 nếu chưa upload)."""
     info = get_cv_info_for_user(user_id)
     if info is None:
         raise HTTPException(status_code=404, detail="Tài khoản chưa lưu CV nào.")
     return CVInfoOut(**info)
+
+
+@router.get("/auth/cv/{user_id}/history", response_model=CVHistoryOut)
+def auth_cv_history(user_id: int) -> CVHistoryOut:
+    """Lịch sử CV đã tải của tài khoản, mới nhất trước (rỗng nếu chưa có)."""
+    return CVHistoryOut(items=list_cv_history_for_user(user_id))
+
+
+@router.get("/auth/cv/{user_id}/file/{cv_id}")
+def auth_download_cv(user_id: int, cv_id: int) -> Response:
+    """Tải về một CV trong lịch sử (404 nếu không thuộc tài khoản hoặc mất tệp)."""
+    try:
+        data, filename = read_cv_file_for_user(user_id, cv_id)
+    except NoSavedCVError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    # quote() vì tên tệp có dấu tiếng Việt sẽ làm hỏng header nếu để nguyên.
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition":
+                f"attachment; filename*=UTF-8''{quote(filename)}"
+        },
+    )
+
+
+@router.post("/auth/cv/activate", response_model=CVInfoOut)
+def auth_activate_cv(req: ActivateCVRequest) -> CVInfoOut:
+    """Chọn một CV trong lịch sử làm CV dùng cho các lần phân tích sau."""
+    try:
+        info = activate_cv_for_user(req.user_id, req.cv_id)
+    except NoSavedCVError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return CVInfoOut(**info)
+
+
+@router.delete("/auth/cv/{user_id}/{cv_id}")
+def auth_delete_cv(user_id: int, cv_id: int) -> dict:
+    """
+    Xóa một CV khỏi lịch sử của tài khoản.
+
+    404 nếu cv_id không thuộc tài khoản. 409 nếu đây là CV đang dùng — người
+    dùng phải chọn CV khác trước (delete_cv_for_user phân biệt 2 trường hợp
+    bằng cùng một exception nên tra lại để trả đúng mã lỗi).
+    """
+    try:
+        delete_cv_for_user(user_id, cv_id)
+    except NoSavedCVError as e:
+        status = 409 if "đang dùng" in str(e) else 404
+        raise HTTPException(status_code=status, detail=str(e))
+    return {"deleted": True}
 
 
 @router.post("/analyze-saved", response_model=AnalyzeResponse)

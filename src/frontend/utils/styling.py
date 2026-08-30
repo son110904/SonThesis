@@ -332,6 +332,76 @@ p, .stMarkdown p {{ color: var(--text); }}
   font-weight: 700 !important;
 }}
 
+/* ══════════════════════════════════════════════════════════════════════════
+   Modal "Lịch sử CV đã tải" (st.dialog)
+   Cửa sổ nổi + lớp nền mờ do Streamlit render sẵn; ở đây chỉ tô lại theo
+   design system (nền kem, viền ấm, bo góc lớn) và style từng dòng lịch sử.
+   ════════════════════════════════════════════════════════════════════════ */
+/* Chính [data-testid="stDialog"] LÀ lớp phủ toàn màn hình (position:fixed), còn
+   thẻ nổi là con trực tiếp của nó — không phải phần tử anh em như nhiều bản
+   Streamlit trước. Mặc định lớp phủ chỉ mờ 0.25 nên trên nền kem của trang gần
+   như không thấy tách lớp; tăng độ đậm + thêm blur cho rõ. */
+[data-testid="stDialog"] {{
+  background-color: rgba(36, 23, 16, 0.45) !important;
+  backdrop-filter: blur(3px);
+}}
+[data-testid="stDialog"] > div {{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-hover), var(--inset-hi) !important;
+}}
+[data-testid="stDialog"] h2 {{
+  font-family: {_FONT_STACK} !important; color: var(--accent) !important;
+  font-size: 1.25rem !important; font-weight: 700 !important;
+}}
+
+/* Một dòng trong danh sách lịch sử */
+.cvh-row {{
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: linear-gradient(180deg, var(--surface), var(--surface-warm));
+  border: 1px solid var(--border); border-radius: 14px 14px 0 0;
+  border-bottom: none;
+  padding: 0.75rem 1rem 0.6rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}}
+/* Hàng nút (Tải về / Dùng CV này) nằm ngay dưới thẻ — bo góc dưới + viền nối
+   liền để hai phần trông như MỘT khối, thay vì hai ô rời nhau. */
+[data-testid="stDialog"] [data-testid="stHorizontalBlock"]:has(.st-key-cvh_dl_ ),
+[data-testid="stDialog"] [data-testid="stHorizontalBlock"] {{
+  border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 14px 14px; background: var(--surface-warm);
+  padding: 0.45rem 0.7rem 0.6rem; margin-bottom: 0.65rem;
+}}
+[data-testid="stDialog"] [data-testid="stHorizontalBlock"] button {{
+  font-size: 0.85rem !important; padding: 0.4rem 0.8rem !important;
+  border-radius: 10px !important;
+}}
+/* Nút "Tải về" và nút vô hiệu "Đang dùng" là phụ → kiểu viền, không gradient */
+[data-testid="stDialog"] [data-testid="stDownloadButton"] button,
+[data-testid="stDialog"] button:disabled {{
+  background: var(--surface) !important; color: var(--accent) !important;
+  border: 1.4px solid var(--border) !important; box-shadow: none !important;
+}}
+[data-testid="stDialog"] [data-testid="stDownloadButton"] button p,
+[data-testid="stDialog"] button:disabled p {{ color: var(--accent) !important; }}
+[data-testid="stDialog"] button:disabled {{ opacity: 0.55 !important; }}
+.cvh-row:hover {{ border-color: var(--accent-mid); box-shadow: var(--shadow-card); }}
+.cvh-main {{ min-width: 0; }}
+.cvh-name {{
+  font-weight: 700; font-size: 0.95rem; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}}
+.cvh-time {{ font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }}
+.cvh-tags {{ display: flex; gap: 0.4rem; flex: 0 0 auto; }}
+.cvh-badge {{
+  font-size: 0.72rem; font-weight: 700; padding: 0.22rem 0.65rem;
+  border-radius: 999px; white-space: nowrap;
+}}
+.cvh-current {{ background: var(--good-bg); color: var(--good); border: 1px solid var(--good-border); }}
+.cvh-old {{ background: #F2EBE2; color: var(--muted); border: 1px solid var(--border); }}
+.cvh-missing {{ background: var(--bad-bg); color: var(--bad); border: 1px solid rgba(160,48,32,0.25); }}
+
 /* ─── Header: tên user + nút Đăng xuất ───────────────── */
 .hdr-username {{
   text-align: right; padding-top: 0.75rem; color: var(--muted);
@@ -366,12 +436,12 @@ p, .stMarkdown p {{ color: var(--text); }}
 }}
 [data-testid="stFileUploaderDropzoneInstructions"] {{ display: none !important; }}
 [data-testid="stFileUploaderDropzone"]::before {{
-  content: "📄  Tải CV lên tại đây";
+  content: "Tải CV lên tại đây";
   font-family: {_FONT_STACK}; font-weight: 700;
   font-size: 1.08rem; color: var(--accent); letter-spacing: -0.01em;
 }}
 .st-key-jd_uploader [data-testid="stFileUploaderDropzone"]::before {{
-  content: "📄  Tải JD lên tại đây";
+  content: "Tải JD lên tại đây";
 }}
 [data-testid="stFileUploaderDropzone"]::after {{
   content: "Kéo thả tệp vào đây hoặc bấm để chọn — PDF · DOCX · MD";
@@ -1063,14 +1133,14 @@ def render_header() -> None:
         (col_brand,) = st.columns(1)
 
     with col_brand:
-        if st.button("🐾 ShibaCV", key="brand_home", help="Về trang chủ"):
+        if st.button("ShibaCV", key="brand_home", help="Về trang chủ"):
             st.session_state["view"] = "landing"
             st.rerun()
 
     if user:
         with col_name:
             st.markdown(
-                f'<div class="hdr-username">👤 {_html.escape(user["full_name"])}</div>',
+                f'<div class="hdr-username">{_html.escape(user["full_name"])}</div>',
                 unsafe_allow_html=True,
             )
         with col_logout:
@@ -1092,12 +1162,12 @@ def render_footer() -> None:
         """
         <div class="shiba-footer">
           <div style="background:linear-gradient(135deg,rgba(250,227,210,0.6),rgba(255,245,236,0.4));border:1.5px solid rgba(138,63,34,0.15);border-radius:12px;padding:0.9rem 1.2rem;margin-bottom:1.5rem;text-align:center">
-            <div style="font-size:0.85rem;color:var(--accent);font-weight:600;margin-bottom:0.3rem">⚠️ Lưu ý quan trọng</div>
+            <div style="font-size:0.85rem;color:var(--accent);font-weight:600;margin-bottom:0.3rem">Lưu ý quan trọng</div>
             <div style="font-size:0.82rem;color:var(--text);line-height:1.5">AI có thể mắc lỗi. Hãy kiểm tra các thông tin trước khi sử dụng.</div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem">
             <div>
-              <div class="f-logo">🐾 ShibaCV</div>
+              <div class="f-logo">ShibaCV</div>
               <div class="f-desc">Nền tảng AI đồng hành cùng bạn trên hành trình<br>tuyển dụng và phát triển sự nghiệp.</div>
               <div class="f-copy">© 2026 ShibaCV AI. Built with precision and treats.</div>
             </div>
@@ -1112,11 +1182,11 @@ def render_footer() -> None:
 
 
 def render_scanning(
-    title: str = "🐾 Shiba đang phân tích CV của bạn…",
+    title: str = "Shiba đang phân tích CV của bạn…",
     quotes: tuple[str, str, str] = (
         "Shiba đang đọc kỹ năng của bạn…",
         "Đang đối chiếu với hàng ngàn tiêu chuẩn…",
-        "Sắp xong rồi, gâu gâu! 🐶",
+        "Sắp xong rồi!",
     ),
     steps: tuple[str, ...] | None = None,
 ) -> None:
@@ -1168,7 +1238,7 @@ def render_scanning(
                 </div>
                 {log_html}
                 <div class="ai-progress"><div class="aip-fill"></div></div>
-                <div class="ai-stage"><span>🐾 Đang xử lý…</span><span>ShibaCV Engine v2</span></div>
+                <div class="ai-stage"><span>Đang xử lý…</span><span>ShibaCV Engine v2</span></div>
               </div>
             </div>
           </div>

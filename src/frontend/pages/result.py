@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 from datetime import datetime
 
+from src.config import VIETNAM_TZ
 from src.frontend.components import (
     render_metric_card,
     render_cv_review,
@@ -25,7 +26,7 @@ def render_result() -> None:
         st.rerun()
         return
 
-    now_str = datetime.now().strftime("%I:%M %p, %d/%m/%Y")
+    now_str = datetime.now(VIETNAM_TZ).strftime("%I:%M %p, %d/%m/%Y")
 
     # ── Header ───────────────────────────────────────────────────────────────
     hdr_l, hdr_r = st.columns([3, 1])
@@ -68,16 +69,16 @@ def render_result() -> None:
     st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
     # ── HERO: AI CV Review (đầu ra trung tâm) ─────────────────────────────────
-    st.markdown('<div class="section-h">🤖 Nhận xét chi tiết từ Shiba AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-h">Nhận xét chi tiết từ Shiba AI</div>', unsafe_allow_html=True)
     render_cv_review(result.get("cv_review"), result.get("ai_recommendation"))
 
     # ── AI CV Improvement: tiếp nối AI CV Review, sinh tự động (nếu có) ───────
     if result.get("cv_improvement"):
-        st.markdown('<div class="section-h">✍️ Gợi ý cải thiện CV</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-h">Gợi ý cải thiện CV</div>', unsafe_allow_html=True)
         render_cv_improvement(result["cv_improvement"])
 
     # ── AI Application Email: CHỈ sinh khi người dùng bấm nút ─────────────────
-    st.markdown('<div class="section-h">✉️ Chuẩn bị ứng tuyển</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-h">Chuẩn bị ứng tuyển</div>', unsafe_allow_html=True)
     application_email = st.session_state.get("application_email")
     if application_email:
         render_application_email(application_email)
@@ -85,7 +86,7 @@ def render_result() -> None:
         # rerun → phải bấm lần thứ hai mới thực sự tạo).
         do_generate = st.button("↻ Tạo lại email khác", key="regen_email")
     else:
-        do_generate = st.button("✉️ Tạo email ứng tuyển", type="primary", key="gen_email")
+        do_generate = st.button("Tạo email ứng tuyển", type="primary", key="gen_email")
 
     if do_generate:
         with st.spinner("Shiba đang soạn email ứng tuyển…"):

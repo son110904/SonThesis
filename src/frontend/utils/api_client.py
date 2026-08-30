@@ -520,6 +520,52 @@ def _http_get_cv_info(user_id) -> Optional[dict]:
     return _handle_response(resp)
 
 
+def _http_get_cv_history(user_id) -> list[dict]:
+    import requests
+    try:
+        resp = requests.get(_url(f"/auth/cv/{user_id}/history"), timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/cv/{{id}}/history: {e}")
+    return _handle_response(resp).get("items", [])
+
+
+def _http_download_cv(user_id, cv_id) -> tuple[bytes, str]:
+    import re as _re
+    import requests
+    from urllib.parse import unquote
+    try:
+        resp = requests.get(_url(f"/auth/cv/{user_id}/file/{cv_id}"), timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi tải CV: {e}")
+    if resp.status_code != 200:
+        raise APIError("Không tải được tệp CV này.")
+    cd = resp.headers.get("content-disposition", "")
+    m = _re.search(r"filename\*=UTF-8''([^;]+)", cd)
+    return resp.content, unquote(m.group(1)) if m else "cv"
+
+
+def _http_activate_cv(user_id, cv_id) -> dict:
+    import requests
+    try:
+        resp = requests.post(
+            _url("/auth/cv/activate"),
+            json={"user_id": user_id, "cv_id": cv_id},
+            timeout=_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi /auth/cv/activate: {e}")
+    return _handle_response(resp)
+
+
+def _http_delete_cv(user_id, cv_id) -> None:
+    import requests
+    try:
+        resp = requests.delete(_url(f"/auth/cv/{user_id}/{cv_id}"), timeout=_TIMEOUT)
+    except requests.RequestException as e:
+        raise APIError(f"Lỗi gọi DELETE /auth/cv: {e}")
+    _handle_response(resp)
+
+
 def _http_analyze_cv_saved(user_id, occupation_key, include_recommendation) -> dict:
     import requests
     payload = {
@@ -598,6 +644,55 @@ def _embedded_get_cv_info(user_id) -> Optional[dict]:
         raise APIError(f"Lỗi xử lý: {e}")
 
 
+def _embedded_get_cv_history(user_id) -> list[dict]:
+    from src.online.services import list_cv_history_for_user as _svc
+
+    try:
+        return _svc(user_id)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi lấy lịch sử CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_download_cv(user_id, cv_id) -> tuple[bytes, str]:
+    from src.online.services import read_cv_file_for_user as _svc
+    from src.online.services import NoSavedCVError
+
+    try:
+        return _svc(user_id, cv_id)
+    except NoSavedCVError as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi đọc tệp CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_activate_cv(user_id, cv_id) -> dict:
+    from src.online.services import activate_cv_for_user as _svc
+    from src.online.services import NoSavedCVError
+
+    try:
+        return _svc(user_id, cv_id)
+    except NoSavedCVError as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi chọn CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
+def _embedded_delete_cv(user_id, cv_id) -> None:
+    from src.online.services import delete_cv_for_user as _svc
+    from src.online.services import NoSavedCVError
+
+    try:
+        _svc(user_id, cv_id)
+    except NoSavedCVError as e:
+        raise APIError(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Lỗi khi xóa CV (embedded)")
+        raise APIError(f"Lỗi xử lý: {e}")
+
+
 def _embedded_analyze_cv_saved(user_id, occupation_key, include_recommendation) -> dict:
     from src.online.services import analyze_cv_for_saved_user as _svc
     from src.online.services import NoSavedCVError
@@ -666,10 +761,38 @@ def save_cv(user_id: int, file_bytes: bytes, filename: str) -> dict:
 
 
 def get_cv_info(user_id: int) -> Optional[dict]:
-    """Thông tin CV đã lưu của tài khoản (None nếu chưa upload)."""
+    """Thông tin CV ĐANG DÙNG của tài khoản (None nếu chưa upload)."""
     if _REMOTE:
         return _http_get_cv_info(user_id)
     return _embedded_get_cv_info(user_id)
+
+
+def get_cv_history(user_id: int) -> list[dict]:
+    """Lịch sử CV đã tải của tài khoản, mới nhất trước."""
+    if _REMOTE:
+        return _http_get_cv_history(user_id)
+    return _embedded_get_cv_history(user_id)
+
+
+def download_cv(user_id: int, cv_id: int) -> tuple[bytes, str]:
+    """Đọc nội dung 1 CV trong lịch sử → (bytes, tên tệp gốc)."""
+    if _REMOTE:
+        return _http_download_cv(user_id, cv_id)
+    return _embedded_download_cv(user_id, cv_id)
+
+
+def activate_cv(user_id: int, cv_id: int) -> dict:
+    """Chọn 1 CV trong lịch sử làm CV dùng cho các lần phân tích sau."""
+    if _REMOTE:
+        return _http_activate_cv(user_id, cv_id)
+    return _embedded_activate_cv(user_id, cv_id)
+
+
+def delete_cv(user_id: int, cv_id: int) -> None:
+    """Xóa 1 CV khỏi lịch sử. Raise APIError nếu đang là CV active hoặc không thuộc user."""
+    if _REMOTE:
+        return _http_delete_cv(user_id, cv_id)
+    return _embedded_delete_cv(user_id, cv_id)
 
 
 def analyze_cv_saved(user_id: int, occupation_key: str, include_recommendation: bool = True) -> dict:

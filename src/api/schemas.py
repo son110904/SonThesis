@@ -104,6 +104,30 @@ class UserOut(BaseModel):
 class CVInfoOut(BaseModel):
     original_filename: str
     uploaded_at: str
+    # Chỉ /auth/cv (upload) điền giá trị thật; /auth/cv/{id} và /auth/cv/activate
+    # trả None vì không có khái niệm "trùng lặp" ở hai thao tác đó.
+    duplicate: Optional[bool] = None
+
+
+class CVHistoryItemOut(BaseModel):
+    """Một lần tải CV trong lịch sử của tài khoản."""
+
+    id: int
+    original_filename: str
+    uploaded_at: str
+    exists: bool       # file còn trên đĩa không (bản ghi cũ có thể đã mất file)
+    is_active: bool    # có phải CV đang dùng để phân tích không
+
+
+class CVHistoryOut(BaseModel):
+    items: list[CVHistoryItemOut] = []
+
+
+class ActivateCVRequest(BaseModel):
+    """Body endpoint POST /auth/cv/activate — chọn CV trong lịch sử để dùng."""
+
+    user_id: int
+    cv_id: int
 
 
 class AnalyzeSavedRequest(BaseModel):

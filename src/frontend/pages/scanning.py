@@ -47,9 +47,9 @@ def _fail(st, e: "APIError") -> None:
     st.markdown("<style>.scan-wrap{display:none !important}</style>", unsafe_allow_html=True)
     msg = str(e)
     if "không phải là CV" in msg or "không phải CV" in msg:
-        st.error("📄 " + msg)
+        st.error(msg)
     elif "không được hỗ trợ" in msg or "không hỗ trợ" in msg:
-        st.error("📎 " + msg)
+        st.error(msg)
     else:
         st.error(f"Lỗi phân tích: {msg}")
     if st.button("← Quay lại"):
@@ -69,11 +69,11 @@ def render_scanning_page() -> None:
 
     # Phân tích trực tiếp 1 nghề đã chọn thủ công (pipeline đầy đủ, 1 nghề).
     render_scanning(
-        title="🐾 Shiba đang đánh giá CV của bạn…",
+        title="Shiba đang đánh giá CV của bạn…",
         quotes=(
             "Đang chấm điểm phù hợp với nghề…",
             "Phân tích điểm mạnh & kỹ năng còn thiếu…",
-            "Soạn nhận xét chi tiết, sắp xong! 🐶",
+            "Soạn nhận xét chi tiết, sắp xong!",
         ),
         steps=(
             "Đọc & bóc tách văn bản CV",
